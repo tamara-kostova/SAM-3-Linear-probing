@@ -1,7 +1,10 @@
 .env
 *.zip
 sam3_env
-checkpoints
 __pycache__
 brat_dataset
 sam3
+*nii
+*.pt
+*.pth
+*.h5

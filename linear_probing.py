@@ -480,35 +480,37 @@ def train_linear_probe_optimized(
 # ============================================================================
 
 def evaluate_probe_optimized(data_loader, probe, device='cuda'):
-    """Optimized evaluation"""
     probe.eval()
-    all_preds = []
-    all_targets = []
-    
+
+    tp = fp = tn = fn = 0
+
     with torch.no_grad():
         for features, masks in tqdm(data_loader, desc="Evaluating", leave=False):
-            features = features.to(device)
-            masks = masks.to(device)
-            
+            features = features.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True)
+
             logits = probe(features)
-            
+
             if logits.shape[-2:] != masks.shape[-2:]:
                 logits = torch.nn.functional.interpolate(
                     logits, size=masks.shape[-2:],
                     mode='bilinear', align_corners=False
                 )
-            
-            preds = torch.argmax(logits, dim=1)
-            
-            all_preds.append(preds.cpu().numpy().flatten())
-            all_targets.append(masks.cpu().numpy().flatten())
-    
-    all_preds = np.concatenate(all_preds)
-    all_targets = np.concatenate(all_targets)
-    
-    accuracy = accuracy_score(all_targets, all_preds)
-    iou = jaccard_score(all_targets, all_preds, average='binary')
-    
+
+            preds = torch.argmax(logits, dim=1)  # [B,H,W]
+
+            preds_fg = (preds == 1)
+            masks_fg = (masks == 1)
+
+            tp += (preds_fg & masks_fg).sum().item()
+            fp += (preds_fg & ~masks_fg).sum().item()
+            fn += (~preds_fg & masks_fg).sum().item()
+            tn += (~preds_fg & ~masks_fg).sum().item()
+
+    total = tp + fp + fn + tn
+    accuracy = (tp + tn) / max(total, 1)
+    iou = tp / max(tp + fp + fn, 1)
+
     return accuracy, iou
 
 
@@ -634,11 +636,11 @@ def main(args):
         # Pre-compute features
         precompute_sam3_features(
             train_dataset, feature_extractor, 
-            features_train_path, batch_size=16, device=device
+            features_train_path, batch_size=2, device=device
         )
         precompute_sam3_features(
             val_dataset, feature_extractor,
-            features_val_path, batch_size=16, device=device
+            features_val_path, batch_size=2, device=device
         )
         
         print("✓ Features pre-computed and saved!")
@@ -658,7 +660,7 @@ def main(args):
         train_features_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True,
         persistent_workers=False
     )
@@ -667,7 +669,7 @@ def main(args):
         val_features_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True,
         persistent_workers=False
     )
