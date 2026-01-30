@@ -25,6 +25,8 @@ import matplotlib.pyplot as plt
 from torch.cuda.amp import autocast, GradScaler
 import h5py
 
+from models import LinearProbe
+
 # ============================================================================
 # 1. DATASET
 # ============================================================================
@@ -284,28 +286,7 @@ class PrecomputedFeaturesDataset(Dataset):
 
 
 # ============================================================================
-# 2. LINEAR PROBE
-# ============================================================================
-
-class LinearProbe(nn.Module):
-    """Simple linear classifier for segmentation"""
-    def __init__(self, feature_dim=256, num_classes=2):
-        super().__init__()
-        self.classifier = nn.Conv2d(feature_dim, num_classes, kernel_size=1)
-    
-    def forward(self, features):
-        """
-        Args:
-            features: [B, C, H, W] feature maps from SAM3
-        Returns:
-            logits: [B, num_classes, H, W] per-pixel class logits
-        """
-        logits = self.classifier(features)
-        return logits
-
-
-# ============================================================================
-# 3. SAM3 FEATURE EXTRACTOR
+# 2. SAM3 FEATURE EXTRACTOR
 # ============================================================================
 
 class SAM3FeatureExtractor:
@@ -398,7 +379,7 @@ class SAM3FeatureExtractor:
 
 
 # ============================================================================
-# 4. TRAINING FUNCTION  
+# 3. TRAINING FUNCTION
 # ============================================================================
 
 def train_linear_probe_optimized(
@@ -495,7 +476,7 @@ def train_linear_probe_optimized(
 
 
 # ============================================================================
-# 5. EVALUATION FUNCTION
+# 4. EVALUATION FUNCTION
 # ============================================================================
 
 def evaluate_probe_optimized(data_loader, probe, device='cuda'):
@@ -532,7 +513,7 @@ def evaluate_probe_optimized(data_loader, probe, device='cuda'):
 
 
 # ============================================================================
-# 6. PLOTTING
+# 5. PLOTTING
 # ============================================================================
 
 def plot_results(history, save_path='linear_probe_results.png'):
@@ -567,7 +548,7 @@ def plot_results(history, save_path='linear_probe_results.png'):
 
 
 # ============================================================================
-# 7. MAIN FUNCTION
+# 6. MAIN FUNCTION
 # ============================================================================
 
 def main(args):
@@ -744,7 +725,7 @@ def main(args):
 
 
 # ============================================================================
-# 8. COMMAND LINE INTERFACE
+# 7. COMMAND LINE INTERFACE
 # ============================================================================
 
 def parse_args():
