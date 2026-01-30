@@ -679,7 +679,7 @@ def main(args):
         shuffle=True,
         num_workers=4,
         pin_memory=True,
-        persistent_workers=True
+        persistent_workers=False
     )
     
     val_loader = DataLoader(
@@ -688,7 +688,7 @@ def main(args):
         shuffle=False,
         num_workers=4,
         pin_memory=True,
-        persistent_workers=True
+        persistent_workers=False
     )
 
     # Initialize probe
