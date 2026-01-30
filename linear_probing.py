@@ -23,6 +23,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score, jaccard_score
 import matplotlib.pyplot as plt
 from torch.cuda.amp import autocast, GradScaler
+import h5py
 
 # ============================================================================
 # 1. DATASET
@@ -137,122 +138,149 @@ class PreprocessedBraTSDataset(Dataset):
         return data['image'], data['mask']
 
 
-def precompute_sam3_features(dataset, feature_extractor, save_path, 
-                             batch_size=16, device='cuda'):
+def precompute_sam3_features(dataset, feature_extractor, save_path,
+                                       batch_size=16, device='cuda'):
     """
-    Pre-compute all SAM3 features and save to disk.
-    IMPROVED with better error handling and debugging.
+    MEMORY-EFFICIENT VERSION: Streams features to HDF5 file and keeps them there.
+
+    This fixes the RAM overflow issue by writing directly to disk and never loading
+    the full dataset into RAM.
     """
     dataloader = DataLoader(
-        dataset, 
+        dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=4,
-        pin_memory=True
+        num_workers=2,  # Reduced to save RAM
+        pin_memory=False  # Disabled to save RAM
     )
-    
-    all_features = []
-    all_masks = []
-    
-    print(f"\nPre-computing SAM3 features...")
+
+    print(f"\nPre-computing SAM3 features (STREAMING MODE)...")
     print(f"  Batch size: {batch_size}")
     print(f"  Total batches: {len(dataloader)}")
     print(f"  Save path: {save_path}")
+    print(f"  Using HDF5 format - features stay on disk")
     print()
-    
-    # Test first batch
+
+    # Test first batch to get dimensions
     print("Testing feature extraction on first batch...")
-    first_batch = next(iter(dataloader))
-    images, masks = first_batch
-    images = images.to(device)
-    
-    print(f"  Input shape: {images.shape}")
-    
+    first_images, first_masks = next(iter(dataloader))
+    first_images = first_images.to(device)
+
     with torch.no_grad():
-        try:
-            test_features = feature_extractor.extract_features(images)
-            if test_features is None:
-                raise ValueError("Feature extractor returned None!")
-            print(f"  Output shape: {test_features.shape}")
-            print(f"  Output dtype: {test_features.dtype}")
-            print("✓ Feature extraction test passed!\n")
-        except Exception as e:
-            print(f"❌ Feature extraction failed on test batch!")
-            print(f"   Error: {e}")
-            print("\nDebugging information:")
-            print(f"  Feature extractor type: {type(feature_extractor)}")
-            print(f"  Has extract_features: {hasattr(feature_extractor, 'extract_features')}")
-            raise
-    
-    # Process all batches
-    print("Processing all batches...")
-    for batch_idx, (images, masks) in enumerate(tqdm(dataloader, desc="Extracting features")):
-        images = images.to(device)
-        
-        try:
-            with torch.no_grad():
-                features = feature_extractor.extract_features(images)
-                
-                if features is None:
-                    raise ValueError(f"Feature extractor returned None for batch {batch_idx}")
-                
-                if not isinstance(features, torch.Tensor):
-                    raise ValueError(f"Expected torch.Tensor, got {type(features)}")
-                
-                # Check for NaN or Inf
-                if torch.isnan(features).any():
-                    print(f"⚠ Warning: NaN detected in batch {batch_idx}")
-                if torch.isinf(features).any():
-                    print(f"⚠ Warning: Inf detected in batch {batch_idx}")
-                
-                all_features.append(features.cpu())
-                all_masks.append(masks)
-                
-        except Exception as e:
-            print(f"\n❌ Error in batch {batch_idx}:")
-            print(f"   {e}")
-            print(f"   Image shape: {images.shape}")
-            print(f"   Continuing with next batch...")
-            continue
-    
-    if len(all_features) == 0:
-        raise RuntimeError("No features were extracted! Check the error messages above.")
-    
-    print(f"\n✓ Extracted features from {len(all_features)} batches")
-    print(f"  Saving to {save_path}...")
-    
-    # Save
-    torch.save({
-        'features': torch.cat(all_features, dim=0),
-        'masks': torch.cat(all_masks, dim=0)
-    }, save_path)
-    
-    total_samples = sum(f.shape[0] for f in all_features)
-    print(f"✓ Saved {total_samples} feature vectors to {save_path}")
-    print(f"  Feature shape: {all_features[0].shape}")
+        test_features = feature_extractor.extract_features(first_images)
+        if test_features is None:
+            raise ValueError("Feature extractor returned None!")
+
+    # Get dimensions
+    feature_shape = test_features.shape[1:]  # [C, H, W]
+    mask_shape = first_masks.shape[1:]  # [H, W]
+    total_samples = len(dataset)
+
+    print(f"✓ Feature extraction test passed!")
+    print(f"  Input shape: {first_images.shape}")
+    print(f"  Feature shape per sample: {feature_shape}")
+    print(f"  Mask shape per sample: {mask_shape}")
+    print(f"  Total samples to process: {total_samples}")
+    print()
+
+    # Create HDF5 file
+    print(f"Creating HDF5 file: {save_path}")
+
+    with h5py.File(save_path, 'w') as h5f:
+        # Create datasets with compression
+        features_dset = h5f.create_dataset(
+            'features',
+            shape=(total_samples, *feature_shape),
+            dtype='float32',
+            chunks=(1, *feature_shape),  # One sample per chunk
+            compression='gzip',
+            compression_opts=4
+        )
+
+        masks_dset = h5f.create_dataset(
+            'masks',
+            shape=(total_samples, *mask_shape),
+            dtype='int64',
+            chunks=(1, *mask_shape),
+            compression='gzip',
+            compression_opts=4
+        )
+
+        # Process batches and write directly to disk
+        current_idx = 0
+
+        for batch_idx, (images, masks) in enumerate(tqdm(dataloader, desc="Extracting features")):
+            images = images.to(device)
+            batch_size_actual = images.shape[0]
+
+            try:
+                with torch.no_grad():
+                    # Extract features
+                    features = feature_extractor.extract_features(images)
+
+                    if features is None:
+                        raise ValueError(f"Feature extractor returned None for batch {batch_idx}")
+
+                    # Move to CPU and convert to numpy immediately (free GPU memory)
+                    features_np = features.cpu().numpy()
+                    masks_np = masks.numpy()
+
+                    # Write to HDF5 (disk)
+                    features_dset[current_idx:current_idx + batch_size_actual] = features_np
+                    masks_dset[current_idx:current_idx + batch_size_actual] = masks_np
+
+                    current_idx += batch_size_actual
+
+                    # Explicitly delete to free memory
+                    del features, features_np, masks_np, images
+
+                    # Clear GPU cache every 10 batches
+                    if batch_idx % 10 == 0:
+                        torch.cuda.empty_cache()
+
+            except Exception as e:
+                print(f"\n❌ Error in batch {batch_idx}: {e}")
+                raise
+
+        print(f"\n✓ Wrote {current_idx} samples to HDF5 file")
+
     file_size_mb = os.path.getsize(save_path) / 1e6
-    print(f"  File size: {file_size_mb:.1f} MB\n")
+    print(f"✓ Saved {total_samples} feature vectors to {save_path}")
+    print(f"  File size: {file_size_mb:.1f} MB")
+    print(f"  Feature shape: {feature_shape}")
+    print()
+
 
 
 class PrecomputedFeaturesDataset(Dataset):
-    """Dataset that loads pre-computed SAM3 features"""
+    """Dataset that loads pre-computed SAM3 features from HDF5 file (memory-efficient)"""
     def __init__(self, features_path):
         print(f"Loading pre-computed features from {features_path}...")
         if not os.path.exists(features_path):
             raise FileNotFoundError(f"Features file not found: {features_path}")
-        
-        data = torch.load(features_path)
-        self.features = data['features']
-        self.masks = data['masks']
-        print(f"✓ Loaded {len(self.features)} samples")
+
+        # Open HDF5 file in read mode and keep it open
+        self.h5_file = h5py.File(features_path, 'r')
+        self.features = self.h5_file['features']
+        self.masks = self.h5_file['masks']
+
+        print(f"✓ Loaded {len(self.features)} samples (streaming from disk)")
         print(f"  Feature shape: {self.features[0].shape}")
         print(f"  Mask shape: {self.masks[0].shape}")
-    
+
     def __len__(self):
         return len(self.features)
-    
+
     def __getitem__(self, idx):
-        return self.features[idx], self.masks[idx]
+        # Load single sample from disk (fast with chunking + compression)
+        features = torch.from_numpy(self.features[idx]).float()
+        masks = torch.from_numpy(self.masks[idx]).long()
+        return features, masks
+
+    def __del__(self):
+        # Close HDF5 file when dataset is destroyed
+        if hasattr(self, 'h5_file'):
+            self.h5_file.close()
 
 
 # ============================================================================
@@ -548,8 +576,8 @@ def main(args):
     # Configuration from command-line arguments
     data_root = args.data_root
     cache_dir = os.path.join(args.save_dir, "preprocessed_cache")
-    features_train_path = os.path.join(args.save_dir, "train_features.pt")
-    features_val_path = os.path.join(args.save_dir, "val_features.pt")
+    features_train_path = os.path.join(args.save_dir, "train_features.h5")
+    features_val_path = os.path.join(args.save_dir, "val_features.h5")
     bpe_path = args.bpe_path
 
     batch_size = args.batch_size
