@@ -5,6 +5,7 @@ __pycache__
 brat_dataset
 sam3
 *nii
+*gz
 *.pt
 *.pth
 *.h5
