@@ -24,9 +24,9 @@ from sklearn.metrics import accuracy_score, f1_score, jaccard_score
 import matplotlib.pyplot as plt
 from torch.cuda.amp import autocast, GradScaler
 import h5py
-
+from dotenv import load_dotenv
 from models import LinearProbe
-
+load_dotenv()
 # ============================================================================
 # 1. DATASET
 # ============================================================================
@@ -55,6 +55,14 @@ class PreprocessedBraTSDataset(Dataset):
             with open(cache_index_file, 'r') as f:
                 self.cache_paths = [line.strip() for line in f if line.strip()]
             print(f"✓ Loaded {len(self.cache_paths)} cached slices")
+            if len(self.cache_paths) == 0:
+                print("⚠ Existing cache is empty. Rebuilding cache...")
+                self.cache_paths = self._preprocess_and_cache(
+                    data_root, modality, slice_range, img_size
+                )
+                with open(cache_index_file, 'w') as f:
+                    f.write('\n'.join(self.cache_paths))
+                print(f"✓ Cache rebuilt: {len(self.cache_paths)} slices")
         else:
             # Build cache
             print("Building cache (this takes 30-60 min but only once)...")
@@ -69,6 +77,9 @@ class PreprocessedBraTSDataset(Dataset):
     def _preprocess_and_cache(self, data_root, modality, slice_range, img_size):
         """Pre-process all slices once and save to disk"""
         patient_dirs = sorted(glob.glob(os.path.join(data_root, "BraTS20_Training_*")))
+        if len(patient_dirs) == 0:
+            print(f"⚠ No patient folders found in: {data_root}")
+            print("  Expected folders like: BraTS20_Training_001")
         cache_paths = []
         
         for patient_dir in tqdm(patient_dirs, desc="Processing patients"):
@@ -591,6 +602,17 @@ def main(args):
     print(f"Learning rate: {lr}")
     print(f"Save dir:      {args.save_dir}")
     print("="*80 + "\n")
+
+    # Validate data root and provide actionable hint
+    direct_patients = sorted(glob.glob(os.path.join(data_root, "BraTS20_Training_*")))
+    if len(direct_patients) == 0:
+        nested_patients = sorted(glob.glob(os.path.join(data_root, "**", "BraTS20_Training_*"), recursive=True))
+        if len(nested_patients) > 0:
+            suggested_root = os.path.dirname(nested_patients[0])
+            print("⚠ No patient folders found directly under --data_root.")
+            print(f"  Suggested --data_root: {suggested_root}")
+        else:
+            print("⚠ No BraTS patient folders found recursively under --data_root.")
     
     # Load dataset
     print("="*80)
@@ -601,7 +623,7 @@ def main(args):
         data_root=data_root,
         cache_dir=cache_dir,
         modality=args.modality,
-        force_rebuild=False
+        force_rebuild=args.force_rebuild_cache
     )
     if len(full_dataset) == 0:
         raise RuntimeError(
@@ -759,6 +781,8 @@ def parse_args():
                         help='Learning rate')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='Number of data loading workers')
+    parser.add_argument('--force_rebuild_cache', action='store_true',
+                        help='Force rebuild of preprocessed cache')
     
     return parser.parse_args()
 
