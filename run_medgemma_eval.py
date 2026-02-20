@@ -33,6 +33,7 @@ import json
 import argparse
 import glob
 import base64
+import time
 import requests
 import numpy as np
 import pandas as pd
@@ -203,7 +204,8 @@ class MedGemmaAnalyzer:
         image.save(buffer, format="PNG")
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-    def analyze(self, image, system_prompt=SYSTEM_PROMPT, timeout=30):
+    def analyze(self, image, system_prompt=SYSTEM_PROMPT, timeout=120, max_tokens=256,
+                retries=2, retry_backoff=2.0):
         image_b64 = self.encode_image(image)
         payload = {
             "model": self.model,
@@ -217,20 +219,24 @@ class MedGemmaAnalyzer:
                     ],
                 },
             ],
-            "max_tokens": 512,
+            "max_tokens": max_tokens,
             "temperature": 0.0,
         }
-        try:
-            response = requests.post(self.endpoint, json=payload, timeout=timeout)
-            response.raise_for_status()
-            content = response.json()["choices"][0]["message"]["content"]
-            parsed = _parse_json_payload(content)
-            if parsed is None:
-                raise ValueError("Failed to parse model JSON output")
-            return parsed
-        except Exception as e:
-            print(f"Warning MedGemma error: {e}")
-            return None
+        for attempt in range(retries + 1):
+            try:
+                response = requests.post(self.endpoint, json=payload, timeout=timeout)
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"]
+                parsed = _parse_json_payload(content)
+                if parsed is None:
+                    raise ValueError(f"Failed to parse model JSON output: {content}")
+                return parsed
+            except Exception as e:
+                if attempt < retries:
+                    time.sleep(retry_backoff * (attempt + 1))
+                    continue
+                print(f"Warning MedGemma error: {e}")
+                return None
 
 
 # ============================================================================
@@ -240,6 +246,7 @@ class MedGemmaAnalyzer:
 def run_evaluation(args):
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Load manifest from Phase 1
     with open(args.manifest, "r") as f:
@@ -256,40 +263,71 @@ def run_evaluation(args):
     analyzer = MedGemmaAnalyzer(endpoint=args.endpoint, model=args.model)
     results_sam3 = []
     skipped = 0
+    checkpoint_path = output_dir / f"results_sam3_{timestamp}.jsonl"
+    print(f"[OK] Streaming checkpoints: {checkpoint_path}")
 
-    for entry in tqdm(manifest, desc="Analyzing"):
-        masked_path = entry["masked_path"]
-        gt_label = entry.get("gt_label")
+    with open(checkpoint_path, "a", encoding="utf-8") as checkpoint_file:
+        for entry in tqdm(manifest, desc="Analyzing"):
+            masked_path = entry["masked_path"]
+            gt_label = entry.get("gt_label")
 
-        try:
-            image = Image.open(masked_path).convert("RGB")
-            prediction = analyzer.analyze(image)
+            try:
+                image = Image.open(masked_path).convert("RGB")
+                prediction = analyzer.analyze(
+                    image,
+                    timeout=args.request_timeout,
+                    max_tokens=args.max_tokens,
+                    retries=args.retries,
+                    retry_backoff=args.retry_backoff,
+                )
 
-            if prediction is None:
+                if prediction is None:
+                    skipped += 1
+                    checkpoint_row = {
+                        "status": "skipped",
+                        "reason": "prediction_none",
+                        "image_path": entry.get("original_path"),
+                        "masked_path": masked_path,
+                        "gt_label": gt_label,
+                        "dataset": entry.get("dataset"),
+                    }
+                    checkpoint_file.write(json.dumps(checkpoint_row) + "\n")
+                    checkpoint_file.flush()
+                    continue
+
+                result_row = {
+                    "image_path": entry["original_path"],
+                    "masked_path": masked_path,
+                    "gt_label": gt_label,
+                    "prediction": prediction,
+                    "mode": f'sam3_{entry.get("mask_type", "masked")}',
+                    "tumor_pixels": entry.get("tumor_pixels"),
+                    "total_pixels": entry.get("total_pixels"),
+                    "tumor_fraction": entry.get("tumor_fraction"),
+                    "dataset": entry.get("dataset"),
+                }
+                results_sam3.append(result_row)
+                checkpoint_file.write(json.dumps({"status": "success", **result_row}) + "\n")
+                checkpoint_file.flush()
+
+            except Exception as e:
+                print(f"\nWarning: skipping {masked_path}: {e}")
                 skipped += 1
+                checkpoint_row = {
+                    "status": "skipped",
+                    "reason": str(e),
+                    "image_path": entry.get("original_path"),
+                    "masked_path": masked_path,
+                    "gt_label": gt_label,
+                    "dataset": entry.get("dataset"),
+                }
+                checkpoint_file.write(json.dumps(checkpoint_row) + "\n")
+                checkpoint_file.flush()
                 continue
-
-            results_sam3.append({
-                "image_path": entry["original_path"],
-                "masked_path": masked_path,
-                "gt_label": gt_label,
-                "prediction": prediction,
-                "mode": f'sam3_{entry.get("mask_type", "masked")}',
-                "tumor_pixels": entry.get("tumor_pixels"),
-                "total_pixels": entry.get("total_pixels"),
-                "tumor_fraction": entry.get("tumor_fraction"),
-                "dataset": entry.get("dataset"),
-            })
-
-        except Exception as e:
-            print(f"\nWarning: skipping {masked_path}: {e}")
-            skipped += 1
-            continue
 
     print(f"\n[OK] Evaluated: {len(results_sam3)}  |  Skipped: {skipped}")
 
     # Save raw results
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_path = output_dir / f"results_sam3_{timestamp}.json"
     with open(results_path, "w") as f:
         json.dump(results_sam3, f, indent=2)
@@ -438,6 +476,14 @@ def parse_args():
                         help="Model name to pass to the API")
     parser.add_argument("--max_samples", type=int, default=None,
                         help="Cap number of images (for testing)")
+    parser.add_argument("--request_timeout", type=int, default=120,
+                        help="Per-request timeout in seconds")
+    parser.add_argument("--max_tokens", type=int, default=256,
+                        help="Max completion tokens per MedGemma response")
+    parser.add_argument("--retries", type=int, default=2,
+                        help="Retry attempts for timeout/parse/network errors")
+    parser.add_argument("--retry_backoff", type=float, default=2.0,
+                        help="Base backoff seconds between retries")
     # Optional standalone baseline from a prior JSONL run
     parser.add_argument("--standalone_jsonl", nargs="+", default=None,
                         help="MedGemma JSONL baseline files for comparison")
