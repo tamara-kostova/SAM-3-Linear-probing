@@ -24,6 +24,7 @@ Usage:
 import os
 import json
 import argparse
+import glob
 import requests
 import numpy as np
 import pandas as pd
@@ -46,8 +47,33 @@ import cv2
 with open("system_prompt.txt", "r", encoding="utf-8") as f:
     SYSTEM_PROMPT = f.read()
 
-VLLM_ENDPOINT = "http://medgemma.openbrain.io/v1/chat/completions"
+VLLM_ENDPOINT = os.getenv("VLLM_ENDPOINT", "http://medgemma.openbrain.io/v1/chat/completions")
 MODEL_NAME = "google/medgemma-1.5-4b-it"
+
+
+def _resolve_device(requested="auto"):
+    req = (requested or "auto").lower()
+    if req == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if req == "cuda" and not torch.cuda.is_available():
+        print("Warning: CUDA requested but unavailable; falling back to CPU.")
+        return "cpu"
+    return req
+
+
+def _normalize_probe_state_dict(ckpt):
+    state = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
+    if not isinstance(state, dict):
+        raise ValueError("Unsupported checkpoint format for linear probe")
+
+    if "weight" in state and "bias" in state:
+        return {"weight": state["weight"], "bias": state["bias"]}
+    if "classifier.weight" in state and "classifier.bias" in state:
+        return {"weight": state["classifier.weight"], "bias": state["classifier.bias"]}
+    if "module.classifier.weight" in state and "module.classifier.bias" in state:
+        return {"weight": state["module.classifier.weight"], "bias": state["module.classifier.bias"]}
+
+    raise ValueError(f"Unsupported probe checkpoint keys: {list(state.keys())[:5]}")
 
 
 def _norm_label(value):
@@ -79,6 +105,38 @@ def _extract_prediction_label(prediction):
     if detailed:
         return detailed
     return _norm_label(prediction.get("diagnosis_name"))
+
+
+TUMOR_DATASETS = {"images-17", "images-44c", "figshare", "br35h"}
+
+
+def _is_tumor_dataset(dataset_name):
+    if dataset_name is None:
+        return False
+    return str(dataset_name).strip().lower() in TUMOR_DATASETS
+
+
+def _expand_jsonl_paths(jsonl_paths):
+    expanded = []
+    seen = set()
+    for raw_path in jsonl_paths or []:
+        if not raw_path:
+            continue
+        candidates = []
+        if os.path.isdir(raw_path):
+            candidates = sorted(glob.glob(os.path.join(raw_path, "*summary*.jsonl")))
+            if not candidates:
+                candidates = sorted(glob.glob(os.path.join(raw_path, "*.jsonl")))
+        elif any(token in raw_path for token in ["*", "?", "["]):
+            candidates = sorted(glob.glob(raw_path))
+        else:
+            candidates = [raw_path]
+
+        for p in candidates:
+            if p not in seen:
+                expanded.append(p)
+                seen.add(p)
+    return expanded
 
 
 def _parse_json_payload(content):
@@ -113,10 +171,11 @@ def _parse_json_payload(content):
 
 def load_standalone_from_jsonl(jsonl_paths, split_filter=None, tumor_only=True):
     rows = []
-    if not jsonl_paths:
+    expanded_paths = _expand_jsonl_paths(jsonl_paths)
+    if not expanded_paths:
         return rows
 
-    for path in jsonl_paths:
+    for path in expanded_paths:
         if not os.path.exists(path):
             print(f"Warning: JSONL file not found: {path}")
             continue
@@ -139,7 +198,7 @@ def load_standalone_from_jsonl(jsonl_paths, split_filter=None, tumor_only=True):
                 gt_subclass = _norm_label(meta.get("subclass"))
                 gt_label = gt_subclass if gt_subclass else gt_name
 
-                if tumor_only and gt_name != "tumor":
+                if tumor_only and not _is_tumor_dataset(meta.get("dataset")):
                     continue
 
                 output = obj.get("output", {}) or {}
@@ -158,109 +217,6 @@ def load_standalone_from_jsonl(jsonl_paths, split_filter=None, tumor_only=True):
     return rows
 
 
-# ============================================================================
-# SAM3 SEGMENTOR
-# ============================================================================
-
-class SAM3Segmentor:
-    """SAM3-based tumor segmentation with trained linear probe"""
-    
-    def __init__(self, checkpoint_path, bpe_path, device='cuda'):
-        from sam3.sam3 import build_sam3_image_model
-        
-        print("Loading SAM3...")
-        self.device = device
-        
-        # Load SAM3
-        sam3_model = build_sam3_image_model(bpe_path=bpe_path)
-        
-        # Load trained probe
-        ckpt = torch.load(checkpoint_path, map_location=device)
-        feature_dim = ckpt.get('feature_dim', 256)
-        
-        self.probe = nn.Conv2d(feature_dim, 2, kernel_size=1)
-        self.probe.load_state_dict(
-            ckpt['model_state_dict'] if 'model_state_dict' in ckpt else ckpt
-        )
-        
-        self.sam3 = sam3_model.to(device)
-        self.probe.to(device)
-        self.probe.eval()
-        
-        for param in self.sam3.parameters():
-            param.requires_grad = False
-        self.sam3.eval()
-        
-        print("[OK] SAM3 loaded")
-    
-    @torch.no_grad()
-    def segment(self, image):
-        """
-        Segment tumor from image
-        
-        Args:
-            image: PIL Image or numpy array [H, W, 3]
-            
-        Returns:
-            mask: [H, W] binary numpy array (1=tumor, 0=background)
-        """
-        # Convert to tensor if needed
-        if isinstance(image, Image.Image):
-            image = np.array(image)
-
-        if image.ndim == 2:
-            image = np.stack([image, image, image], axis=-1)
-        elif image.ndim == 3 and image.shape[-1] == 1:
-            image = np.repeat(image, 3, axis=-1)
-        elif image.ndim != 3:
-            raise ValueError(f"Unexpected image shape: {image.shape}")
-
-        # Ensure RGB
-        if image.shape[-1] != 3:
-            image = image[..., :3]
-        
-        # Normalize
-        image = image.astype(np.float32) / 255.0
-        
-        # To tensor [3, H, W]
-        img_tensor = torch.from_numpy(image).permute(2, 0, 1)
-        
-        # Resize to 1008x1008 for SAM3
-        orig_h, orig_w = image.shape[:2]
-        img_tensor = torch.nn.functional.interpolate(
-            img_tensor.unsqueeze(0), size=(1008, 1008),
-            mode='bilinear', align_corners=False
-        )
-        
-        img_tensor = img_tensor.to(self.device)
-        
-        # Extract features
-        features = self.sam3.backbone(img_tensor, ["brain tumor"])
-        
-        if isinstance(features, dict):
-            for key in ['vision_features', 'image_features', 'features']:
-                if key in features:
-                    features = features[key]
-                    break
-        
-        # Get segmentation
-        logits = self.probe(features)
-        
-        # Upsample back to original size
-        logits = torch.nn.functional.interpolate(
-            logits, size=(orig_h, orig_w),
-            mode='bilinear', align_corners=False
-        )
-        
-        # Get binary mask
-        mask = torch.argmax(logits, dim=1).squeeze(0).cpu().numpy()
-        
-        # Clear GPU memory
-        del img_tensor, features, logits
-        if self.device.startswith("cuda"):
-            torch.cuda.empty_cache()
-        
-        return mask.astype(np.uint8)
 
 
 # ============================================================================
@@ -523,7 +479,7 @@ class TumorDatasetLoader:
 class SAM3MedGemmaEvaluator:
     """Complete evaluation pipeline"""
     
-    def __init__(self, sam3_checkpoint, bpe_path, output_dir, device='cuda'):
+    def __init__(self, sam3_checkpoint, bpe_path, output_dir, device='auto'):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -655,6 +611,9 @@ class SAM3MedGemmaEvaluator:
             
             return y_true, y_pred
         
+        metrics_rows = []
+        metrics_summary = {"generated_at": datetime.now().isoformat()}
+
         # Standalone metrics
         if results_standalone:
             y_true_s, y_pred_s = extract_predictions(results_standalone)
@@ -668,6 +627,21 @@ class SAM3MedGemmaEvaluator:
             print(f"  Precision: {prec_s:.4f}")
             print(f"  Recall:    {rec_s:.4f}")
             print(f"  F1-Score:  {f1_s:.4f}")
+            metrics_summary["standalone"] = {
+                "samples": len(y_true_s),
+                "accuracy": float(acc_s),
+                "precision_weighted": float(prec_s),
+                "recall_weighted": float(rec_s),
+                "f1_weighted": float(f1_s),
+            }
+            metrics_rows.append({
+                "method": "standalone",
+                "samples": len(y_true_s),
+                "accuracy": float(acc_s),
+                "precision_weighted": float(prec_s),
+                "recall_weighted": float(rec_s),
+                "f1_weighted": float(f1_s),
+            })
         
         # SAM3 metrics
         if results_sam3:
@@ -682,6 +656,21 @@ class SAM3MedGemmaEvaluator:
             print(f"  Precision: {prec_sam:.4f}")
             print(f"  Recall:    {rec_sam:.4f}")
             print(f"  F1-Score:  {f1_sam:.4f}")
+            metrics_summary["sam3"] = {
+                "samples": len(y_true_sam),
+                "accuracy": float(acc_sam),
+                "precision_weighted": float(prec_sam),
+                "recall_weighted": float(rec_sam),
+                "f1_weighted": float(f1_sam),
+            }
+            metrics_rows.append({
+                "method": "sam3",
+                "samples": len(y_true_sam),
+                "accuracy": float(acc_sam),
+                "precision_weighted": float(prec_sam),
+                "recall_weighted": float(rec_sam),
+                "f1_weighted": float(f1_sam),
+            })
         
         # Comparison
         if results_standalone and results_sam3:
@@ -690,8 +679,24 @@ class SAM3MedGemmaEvaluator:
             f1_pct = ((f1_sam / f1_s - 1) * 100) if f1_s > 0 else float("nan")
             print(f"  Accuracy:  {(acc_sam - acc_s):+.4f} ({acc_pct:+.1f}%)")
             print(f"  F1-Score:  {(f1_sam - f1_s):+.4f} ({f1_pct:+.1f}%)")
+            metrics_summary["improvement"] = {
+                "accuracy_delta": float(acc_sam - acc_s),
+                "accuracy_pct": float(acc_pct),
+                "f1_delta": float(f1_sam - f1_s),
+                "f1_pct": float(f1_pct),
+            }
         
         print('='*80)
+
+        metrics_json_path = self.output_dir / "metrics_summary.json"
+        with open(metrics_json_path, "w", encoding="utf-8") as f:
+            json.dump(metrics_summary, f, indent=2)
+        print(f"[OK] Metrics saved: {metrics_json_path}")
+
+        if metrics_rows:
+            metrics_csv_path = self.output_dir / "metrics_summary.csv"
+            pd.DataFrame(metrics_rows).to_csv(metrics_csv_path, index=False)
+            print(f"[OK] Metrics table: {metrics_csv_path}")
         
         # Generate plots
         self._plot_comparison(results_standalone, results_sam3)
@@ -787,7 +792,8 @@ def main(args):
         evaluator = SAM3MedGemmaEvaluator(
             sam3_checkpoint=args.sam3_checkpoint,
             bpe_path=args.bpe_path,
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            device=args.device,
         )
     else:
         # Baseline-only mode: avoid loading SAM3 weights.
@@ -838,8 +844,10 @@ def parse_args():
                         help='Background dimming factor for soft mask (0-1)')
     parser.add_argument('--max_samples', type=int, default=None,
                         help='Max samples to process (for testing)')
+    parser.add_argument('--device', choices=['auto', 'cpu', 'cuda'], default='auto',
+                        help='Device for SAM3 inference')
     parser.add_argument('--standalone_jsonl', nargs='+', default=None,
-                        help='Optional existing MedGemma JSONL files used as standalone baseline')
+                        help='Optional MedGemma JSONL baseline inputs (files, globs, or directories)')
     parser.add_argument('--medgemma_split', default=None,
                         help='Optional split filter for JSONL baseline (e.g., subset_1, subset_0_25_7)')
     parser.add_argument('--include_non_tumor_baseline', action='store_true',

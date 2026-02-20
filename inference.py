@@ -18,6 +18,19 @@ from sklearn.metrics import accuracy_score, jaccard_score
 from models import LinearProbe
 
 
+def _normalize_probe_state_dict(ckpt):
+    state = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
+    if not isinstance(state, dict):
+        raise ValueError("Unsupported checkpoint format")
+    if "classifier.weight" in state and "classifier.bias" in state:
+        return {"classifier.weight": state["classifier.weight"], "classifier.bias": state["classifier.bias"]}
+    if "weight" in state and "bias" in state:
+        return {"classifier.weight": state["weight"], "classifier.bias": state["bias"]}
+    if "module.classifier.weight" in state and "module.classifier.bias" in state:
+        return {"classifier.weight": state["module.classifier.weight"], "classifier.bias": state["module.classifier.bias"]}
+    raise ValueError(f"Unsupported checkpoint keys: {list(state.keys())[:5]}")
+
+
 def load_model(checkpoint_path, feature_dim=256, num_classes=2, device='cuda'):
     """Load trained linear probe from checkpoint"""
     print(f"Loading model from {checkpoint_path}...")
@@ -26,7 +39,8 @@ def load_model(checkpoint_path, feature_dim=256, num_classes=2, device='cuda'):
     model = LinearProbe(feature_dim=feature_dim, num_classes=num_classes)
 
     # Load weights
-    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    ckpt = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(_normalize_probe_state_dict(ckpt))
     model.to(device)
     model.eval()
 

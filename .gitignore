@@ -11,4 +11,7 @@ sam3
 *.h5
 venv
 *.jsonl
+*.json
 *.csv
+data
+segmented
