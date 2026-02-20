@@ -9,3 +9,6 @@ sam3
 *.pt
 *.pth
 *.h5
+venv
+*.jsonl
+*.csv
