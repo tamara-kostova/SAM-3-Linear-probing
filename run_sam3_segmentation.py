@@ -104,6 +104,32 @@ def load_samples_from_manifest(manifest_path):
     return samples
 
 
+def find_image_path(base_path, filename):
+    """Search for image file in common locations for all datasets."""
+    candidate_paths = [
+        base_path / filename,
+        base_path / "2" / filename,
+        base_path.parent / filename,
+    ]
+
+    if "figshare" in str(base_path).lower():
+        figshare_root = base_path.parent.parent
+
+        for dataset_folder in figshare_root.glob("brainTumorData*"):
+            candidates = [
+                dataset_folder / filename,
+                dataset_folder / "2" / filename,
+            ]
+            candidate_paths.extend(candidates)
+
+    unique_candidates = list(set(candidate_paths))
+    for candidate in unique_candidates:
+        if candidate.exists():
+            return candidate
+
+    return None
+
+
 # ============================================================================
 # SAM3 SEGMENTOR
 # ============================================================================
@@ -296,7 +322,19 @@ def run_segmentation(args):
         gt_label = sample["gt_label"]
 
         try:
-            image = Image.open(img_path).convert("RGB")
+            image_path = Path(img_path)
+            if not image_path.exists() and args.data_dirs:
+                filename = image_path.name
+                for base_dir in args.data_dirs:
+                    resolved = find_image_path(Path(base_dir), filename)
+                    if resolved is not None:
+                        image_path = resolved
+                        break
+
+            if not image_path.exists():
+                raise FileNotFoundError(f"Image not found: {img_path}")
+
+            image = Image.open(image_path).convert("RGB")
             if max(image.size) > 512:
                 image.thumbnail((512, 512), Image.Resampling.LANCZOS)
 
