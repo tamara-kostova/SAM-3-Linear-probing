@@ -1,0 +1,657 @@
+
+============================================================
+  STANDALONE MEDGEMMA — Accuracy per field
+============================================================
+
+[modality]  overall: 13521/14957 = 90.4%
+    mri                            13521/14957 = 90.4%
+
+[specialized_sequence]  overall: 2971/11957 = 24.8%
+    t1                             422/2942 = 14.3%
+    t1c+                           1777/6378 = 27.9%
+    t2                             772/2637 = 29.3%
+
+[plane]  overall: 1813/7416 = 24.4%
+    axial                          1813/7416 = 24.4%
+
+[diagnosis_name]  overall: 12079/14957 = 80.8%
+    normal                         1735/2585 = 67.1%
+    other abnormalities            17/257 = 6.6%
+    tumor                          10327/12115 = 85.2%
+
+[diagnosis_detailed]  overall: 2893/10615 = 27.3%
+    carcinoma                      0/240 = 0.0%
+    germinoma                      1/97 = 1.0%
+    glioma                         2752/3940 = 69.8%
+    granuloma                      0/77 = 0.0%
+    meduloblastoma                 0/127 = 0.0%
+    meningioma                     115/2888 = 4.0%
+    neurocitoma                    0/999 = 0.0%
+    papiloma                       0/237 = 0.0%
+    pituitary tumor                0/930 = 0.0%
+    schwannoma                     25/932 = 2.7%
+    tuberculoma                    0/148 = 0.0%
+
+============================================================
+  STANDALONE MEDGEMMA — Score distributions
+============================================================
+
+[diagnosis_confidence]  overall avg: 0.948 (n=14749)
+    arachnoid cyst                 0.980 (n=2)
+    cyst                           0.931 (n=28)
+    glioma                         0.925 (n=2)
+    hemorrhage                     0.950 (n=1)
+    hemorrhagic                    0.900 (n=4)
+    hydrocephalus                  0.954 (n=16)
+    multiple sclerosis             0.942 (n=949)
+    normal                         0.988 (n=2498)
+    other abnormalities            0.752 (n=348)
+    sinusitis                      0.950 (n=1)
+    stroke                         0.939 (n=85)
+    tumor                          0.946 (n=10814)
+
+[severity_score]  overall avg: 0.749 (n=10710)
+    arachnoid cyst                 N/A
+    cyst                           0.625 (n=24)
+    glioma                         0.750 (n=2)
+    hemorrhage                     0.700 (n=1)
+    hemorrhagic                    0.675 (n=4)
+    hydrocephalus                  0.740 (n=10)
+    multiple sclerosis             0.607 (n=413)
+    normal                         0.159 (n=22)
+    other abnormalities            0.436 (n=166)
+    sinusitis                      0.600 (n=1)
+    stroke                         0.706 (n=85)
+    tumor                          0.762 (n=9981)
+
+[severity_confidence]  overall avg: 0.836 (n=12059)
+    arachnoid cyst                 0.500 (n=2)
+    cyst                           0.846 (n=26)
+    glioma                         0.850 (n=2)
+    hemorrhage                     0.850 (n=1)
+    hemorrhagic                    0.812 (n=4)
+    hydrocephalus                  0.763 (n=15)
+    multiple sclerosis             0.661 (n=668)
+    normal                         0.991 (n=618)
+    other abnormalities            0.624 (n=221)
+    sinusitis                      0.850 (n=1)
+    stroke                         0.842 (n=85)
+    tumor                          0.843 (n=10415)
+
+============================================================
+  SAM3 + MEDGEMMA — Accuracy per field
+============================================================
+
+[modality]  overall: 10828/11038 = 98.1%
+    mri                            10828/11038 = 98.1%
+
+[specialized_sequence]  overall: 2566/8640 = 29.7%
+    t1                             448/2044 = 21.9%
+    t1c+                           1502/4756 = 31.6%
+    t2                             616/1840 = 33.5%
+
+[plane]  overall: 2592/5081 = 51.0%
+    axial                          2592/5081 = 51.0%
+
+[diagnosis_name]  overall: 10457/12024 = 87.0%
+    normal                         845/2046 = 41.3%
+    tumor                          9612/9978 = 96.3%
+
+[diagnosis_detailed]  overall: 1694/9978 = 17.0%
+    carcinoma                      0/188 = 0.0%
+    germinoma                      0/78 = 0.0%
+    glioma                         1585/1813 = 87.4%
+    granuloma                      0/60 = 0.0%
+    meduloblastoma                 0/103 = 0.0%
+    meningioma                     49/1567 = 3.1%
+    neurocitoma                    0/741 = 0.0%
+    other_abnormalities            0/185 = 0.0%
+    papilloma                      0/185 = 0.0%
+    schwannoma                     15/689 = 2.2%
+    tuberculoma                    0/109 = 0.0%
+    tumor                          45/4260 = 1.1%
+
+============================================================
+  SAM3 + MEDGEMMA — Score distributions
+============================================================
+
+[diagnosis_confidence]  overall avg: 0.922 (n=11706)
+    cyst                           0.939 (n=13)
+    hemorrhagic                    0.900 (n=1)
+    joint effusion                 0.950 (n=1)
+    multiple sclerosis             0.917 (n=168)
+    normal                         0.959 (n=677)
+    optic neuritis                 0.750 (n=1)
+    other abnormalities            0.643 (n=269)
+    stroke                         0.939 (n=15)
+    tumor                          0.927 (n=10561)
+
+[severity_score]  overall avg: 0.735 (n=9875)
+    cyst                           0.558 (n=6)
+    hemorrhagic                    0.500 (n=1)
+    joint effusion                 0.100 (n=1)
+    multiple sclerosis             0.456 (n=43)
+    normal                         N/A
+    optic neuritis                 0.450 (n=1)
+    other abnormalities            0.323 (n=79)
+    stroke                         0.740 (n=15)
+    tumor                          0.740 (n=9729)
+
+[severity_confidence]  overall avg: 0.828 (n=10366)
+    cyst                           0.812 (n=8)
+    hemorrhagic                    0.800 (n=1)
+    joint effusion                 0.900 (n=1)
+    multiple sclerosis             0.640 (n=87)
+    normal                         0.919 (n=61)
+    optic neuritis                 0.600 (n=1)
+    other abnormalities            0.532 (n=177)
+    stroke                         0.871 (n=15)
+    tumor                          0.834 (n=10015)
+
+============================================================
+  SAM3 — Tumor images where SAM3 missed tumor → wrong pred
+============================================================
+  Count: 128
+  gt=germinoma       pred=normal     fraction=0.00000  data/images-44c/Germinoma T1/59_big_gallery.jpeg
+  gt=schwannoma      pred=other abnormalities fraction=0.00088  data/images-44c/Schwannoma T1/f22ff0e8cfda7719b9b83911f1f200_big_gallery.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00080  data/Br35H/yes/y893.jpg
+  gt=granuloma       pred=other abnormalities fraction=0.00004  data/images-44c/Granuloma T2/50748534ad30ba62e49cc7e28c7ecf_big_gallery.jpeg
+  gt=germinoma       pred=multiple sclerosis fraction=0.00000  data/images-44c/Germinoma T1/9ea5c55c6c5aa8697225de8471747f_big_gallery.jpg
+  gt=other_abnormalities pred=other abnormalities fraction=0.00005  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (32).jpeg
+  gt=tumor           pred=other abnormalities fraction=0.00048  data/Br35H/yes/y260.jpg
+  gt=tuberculoma     pred=multiple sclerosis fraction=0.00000  data/images-44c/Tuberculoma T1C+/630ea89bafccbe9a9ba46c3506aef8_big_gallery.jpeg
+  gt=tumor           pred=normal     fraction=0.00000  data/Br35H/yes/y1484.jpg
+  gt=other_abnormalities pred=other abnormalities fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (35).jpeg
+  gt=other_abnormalities pred=normal     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (16).jpeg
+  gt=meningioma      pred=normal     fraction=0.00000  data/images-44c/Meningioma T2/2022-05-30 15_23_06-Meningioma _ Radiology Case _ Radiopaedia.org - Opera.jpg
+  gt=meningioma      pred=normal     fraction=0.00000  data/images-44c/Meningioma T2/ba2cd83ec6fc29868e6529ea41d1d0_big_gallery.jpg
+  gt=other_abnormalities pred=normal     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (102).jpeg
+  gt=tumor           pred=normal     fraction=0.00000  data/Br35H/yes/y171.jpg
+  gt=meningioma      pred=normal     fraction=0.00000  data/images-17/Meningioma (de Baixo Grau, Atípico, Anaplásico, Transicional) T1/meningioma (11).jpg
+  gt=other_abnormalities pred=normal     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (45).jpeg
+  gt=meningioma      pred=other abnormalities fraction=0.00086  data/images-44c/Meningioma T1/006_big_gallery.jpeg
+  gt=glioma          pred=normal     fraction=0.00000  data/images-44c/Ganglioglioma T2/4f662d392d8724068e44e81b4e4a57_big_gallery.jpeg
+  gt=other_abnormalities pred=stroke     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (106).jpeg
+  gt=other_abnormalities pred=other abnormalities fraction=0.00005  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (68).jpeg
+  gt=other_abnormalities pred=stroke     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (108).jpeg
+  gt=other_abnormalities pred=stroke     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (120).jpeg
+  gt=glioma          pred=other abnormalities fraction=0.00015  data/images-44c/Astrocitoma T1C+/24f2e6f17285cb6fc9ff59bba7604a_big_gallery.jpeg
+  gt=meningioma      pred=other abnormalities fraction=0.00027  data/images-44c/Meningioma T2/79eb6dd66b9494ce01a753d331bd70_big_gallery.jpg
+  gt=tumor           pred=normal     fraction=0.00065  data/Br35H/yes/y1461.jpg
+  gt=meningioma      pred=normal     fraction=0.00000  data/images-44c/Meningioma T1/2022-05-30 15_22_03-Meningioma _ Radiology Case _ Radiopaedia.org - Opera.jpg
+  gt=meningioma      pred=normal     fraction=0.00000  data/images-44c/Meningioma T2/2022-05-30 15_22_52-Meningioma _ Radiology Case _ Radiopaedia.org - Opera.jpg
+  gt=other_abnormalities pred=stroke     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (92).jpeg
+  gt=other_abnormalities pred=other abnormalities fraction=0.00003  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T2/outros (35).jpeg
+  gt=germinoma       pred=normal     fraction=0.00003  data/images-44c/Germinoma T1/9e87b94dc8549b2f89a67a312a95fc_big_gallery.jpeg
+  gt=meningioma      pred=other abnormalities fraction=0.00027  data/images-17/Meningioma (de Baixo Grau, Atípico, Anaplásico, Transicional) T2/meningioma (13).jpg
+  gt=granuloma       pred=normal     fraction=0.00017  data/images-44c/Granuloma T1/60._big_gallery.jpeg
+  gt=tuberculoma     pred=multiple sclerosis fraction=0.00000  data/images-44c/Tuberculoma T1C+/2aa464ebf3151988c739d8ecb66b1e_big_gallery.jpeg
+  gt=glioma          pred=normal     fraction=0.00000  data/images-44c/Ganglioglioma T2/dc61b871c7bcd61b3ee69f6c24be77_big_gallery.jpeg
+  gt=tumor           pred=normal     fraction=0.00041  data/Br35H/yes/y697.jpg
+  gt=germinoma       pred=normal     fraction=0.00000  data/images-44c/Germinoma T1/57_big_gallery.jpeg
+  gt=other_abnormalities pred=normal     fraction=0.00000  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T1/outros (87).jpeg
+  gt=meningioma      pred=normal     fraction=0.00000  data/images-44c/Meningioma T1/2022-05-30 15_25_20-Meningioma _ Radiology Case _ Radiopaedia.org - Opera.jpg
+  gt=other_abnormalities pred=stroke     fraction=0.00006  data/images-17/Outros Tipos de Lesões (Abscessos, Cistos, Encefalopatias Diversas) T2/outros (4).jpg
+  gt=tuberculoma     pred=multiple sclerosis fraction=0.00066  data/images-44c/Tuberculoma T1C+/b0a9f26e3cdceb2a3a8d3a61424de7_big_gallery.jpeg
+  gt=tuberculoma     pred=multiple sclerosis fraction=0.00000  data/images-44c/Tuberculoma T1C+/b8c2d7eff1c25ed231f83a290b3930_big_gallery.jpeg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1-766/230.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00087  data/figshare/brainTumorDataPublic_1-766/252.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00016  data/figshare/brainTumorDataPublic_1-766/34.jpg
+  gt=tumor           pred=normal     fraction=0.00034  data/figshare/brainTumorDataPublic_1-766/394.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00088  data/figshare/brainTumorDataPublic_1-766/713.jpg
+  gt=tumor           pred=normal     fraction=0.00074  data/figshare/brainTumorDataPublic_767-1532/1008.jpg
+  gt=tumor           pred=normal     fraction=0.00005  data/figshare/brainTumorDataPublic_767-1532/1027.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1034.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1054.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1062.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1072.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1081.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00047  data/figshare/brainTumorDataPublic_767-1532/1083.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1125.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1129.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1137.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00001  data/figshare/brainTumorDataPublic_767-1532/1148.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1149.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1155.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1163.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1205.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00008  data/figshare/brainTumorDataPublic_767-1532/1212.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00077  data/figshare/brainTumorDataPublic_767-1532/1271.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1275.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00078  data/figshare/brainTumorDataPublic_767-1532/1302.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00017  data/figshare/brainTumorDataPublic_767-1532/1303.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00015  data/figshare/brainTumorDataPublic_767-1532/1371.jpg
+  gt=tumor           pred=normal     fraction=0.00005  data/figshare/brainTumorDataPublic_767-1532/1382.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00072  data/figshare/brainTumorDataPublic_767-1532/1387.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1442.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00072  data/figshare/brainTumorDataPublic_767-1532/1444.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1470.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1471.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1474.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1480.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1481.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1487.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1488.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00038  data/figshare/brainTumorDataPublic_767-1532/1490.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1498.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1506.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1512.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/1522.jpg
+  gt=tumor           pred=normal     fraction=0.00007  data/figshare/brainTumorDataPublic_767-1532/918.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/920.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/926.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_767-1532/927.jpg
+  gt=tumor           pred=normal     fraction=0.00009  data/figshare/brainTumorDataPublic_767-1532/959.jpg
+  gt=tumor           pred=normal     fraction=0.00043  data/figshare/brainTumorDataPublic_767-1532/962.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00002  data/figshare/brainTumorDataPublic_767-1532/970.jpg
+  gt=tumor           pred=multiple sclerosis fraction=0.00077  data/figshare/brainTumorDataPublic_767-1532/989.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00002  data/figshare/brainTumorDataPublic_767-1532/995.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/1537.jpg
+  gt=tumor           pred=normal     fraction=0.00015  data/figshare/brainTumorDataPublic_1533-2298/1564.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/1569.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00002  data/figshare/brainTumorDataPublic_1533-2298/1597.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/1598.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00046  data/figshare/brainTumorDataPublic_1533-2298/1601.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/1606.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00082  data/figshare/brainTumorDataPublic_1533-2298/1719.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00007  data/figshare/brainTumorDataPublic_1533-2298/1722.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00018  data/figshare/brainTumorDataPublic_1533-2298/1746.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00010  data/figshare/brainTumorDataPublic_1533-2298/1762.jpg
+  gt=tumor           pred=normal     fraction=0.00030  data/figshare/brainTumorDataPublic_1533-2298/1777.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00090  data/figshare/brainTumorDataPublic_1533-2298/1778.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/1780.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00095  data/figshare/brainTumorDataPublic_1533-2298/1787.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/1789.jpg
+  gt=tumor           pred=normal     fraction=0.00047  data/figshare/brainTumorDataPublic_1533-2298/1888.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00051  data/figshare/brainTumorDataPublic_1533-2298/1986.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00009  data/figshare/brainTumorDataPublic_1533-2298/2229.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_1533-2298/2250.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00011  data/figshare/brainTumorDataPublic_2299-3064/2415.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2469.jpg
+  gt=tumor           pred=normal     fraction=0.00040  data/figshare/brainTumorDataPublic_2299-3064/2580.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00027  data/figshare/brainTumorDataPublic_2299-3064/2623.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2631.jpg
+  gt=tumor           pred=normal     fraction=0.00004  data/figshare/brainTumorDataPublic_2299-3064/2646.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2647.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2709.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2713.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2747.jpg
+  gt=tumor           pred=normal     fraction=0.00057  data/figshare/brainTumorDataPublic_2299-3064/2760.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/2914.jpg
+  gt=tumor           pred=normal     fraction=0.00000  data/figshare/brainTumorDataPublic_2299-3064/3012.jpg
+  gt=tumor           pred=other abnormalities fraction=0.00017  data/figshare/brainTumorDataPublic_2299-3064/3062.jpg
+
+============================================================
+  SAM3 — Normal images where SAM3 found tumor → pred=tumor
+============================================================
+  Count: 359
+  gt=normal          pred=tumor          fraction=0.01881  data/Br35H/no/no949.jpg
+  gt=normal          pred=tumor          fraction=0.03852  data/Br35H/no/no280.jpg
+  gt=normal          pred=tumor          fraction=0.00251  data/Br35H/no/no634.jpg
+  gt=normal          pred=tumor          fraction=0.00521  data/Br35H/no/no954.jpg
+  gt=normal          pred=tumor          fraction=0.00944  data/Br35H/no/no278.jpg
+  gt=normal          pred=tumor          fraction=0.00333  data/images-17/NORMAL T2/normal (36).jpeg
+  gt=normal          pred=tumor          fraction=0.00148  data/Br35H/no/no261.jpg
+  gt=normal          pred=tumor          fraction=0.00333  data/images-44c/_NORMAL T2/8b8bb21922f81d964d555ac066a878_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00168  data/Br35H/no/no1460.jpg
+  gt=normal          pred=tumor          fraction=0.00495  data/images-44c/_NORMAL T1/2022-06-13 09_37_29-Normal MRI brain _ Radiology Case _ Radiopaedia.org.jpg
+  gt=normal          pred=tumor          fraction=0.00995  data/Br35H/no/no524.jpg
+  gt=normal          pred=tumor          fraction=0.00525  data/images-44c/_NORMAL T1/8bd2d753fdcaa8c1d0ad112f771802_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00271  data/Br35H/no/no1447.jpg
+  gt=normal          pred=tumor          fraction=0.05249  data/Br35H/no/no995.jpg
+  gt=normal          pred=tumor          fraction=0.00454  data/Br35H/no/no690.jpg
+  gt=normal          pred=tumor          fraction=0.00885  data/Br35H/no/no364.jpg
+  gt=normal          pred=tumor          fraction=0.00760  data/images-44c/_NORMAL T2/de0d04a27d346872d4523cfcff325a_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00143  data/images-44c/_NORMAL T2/7c74473b50d5e9a4ff9fbc496e3e13_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00203  data/Br35H/no/no986.jpg
+  gt=normal          pred=tumor          fraction=0.00819  data/images-44c/_NORMAL T1/2022-06-13 09_38_05-Normal MRI brain _ Radiology Case _ Radiopaedia.org.jpg
+  gt=normal          pred=tumor          fraction=0.00589  data/Br35H/no/no108.jpg
+  gt=normal          pred=tumor          fraction=0.00179  data/images-17/NORMAL T2/normal (83).jpeg
+  gt=normal          pred=tumor          fraction=0.00280  data/Br35H/no/no127.jpg
+  gt=normal          pred=tumor          fraction=0.00809  data/Br35H/no/no1457.jpg
+  gt=normal          pred=tumor          fraction=0.00561  data/Br35H/no/no1488.jpg
+  gt=normal          pred=tumor          fraction=0.00439  data/images-44c/_NORMAL T1/7ad2d6e6ba3142f8de89593d1e318d_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00760  data/images-17/NORMAL T2/normal (220).jpeg
+  gt=normal          pred=tumor          fraction=0.04914  data/Br35H/no/no728.jpg
+  gt=normal          pred=tumor          fraction=0.00270  data/Br35H/no/no936.jpg
+  gt=normal          pred=tumor          fraction=0.00107  data/images-17/NORMAL T2/normal (246).jpeg
+  gt=normal          pred=tumor          fraction=0.01638  data/images-17/NORMAL T2/normal (242).jpeg
+  gt=normal          pred=tumor          fraction=0.00156  data/images-44c/_NORMAL T2/26b48e851e2db0d7ade9a193949e19_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.03350  data/Br35H/no/no955.jpg
+  gt=normal          pred=tumor          fraction=0.01770  data/Br35H/no/no1032.jpg
+  gt=normal          pred=tumor          fraction=0.00818  data/Br35H/no/no837.jpg
+  gt=normal          pred=tumor          fraction=0.01703  data/Br35H/no/no1402.jpg
+  gt=normal          pred=tumor          fraction=0.00465  data/images-44c/_NORMAL T2/920be8b0da561e245f108c5d026bb8_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00277  data/Br35H/no/no521.jpg
+  gt=normal          pred=tumor          fraction=0.01057  data/Br35H/no/no803.jpg
+  gt=normal          pred=tumor          fraction=0.00870  data/images-17/NORMAL T2/normal (38).jpeg
+  gt=normal          pred=tumor          fraction=0.00117  data/Br35H/no/no1096.jpg
+  gt=normal          pred=tumor          fraction=0.02440  data/Br35H/no/no502.jpg
+  gt=normal          pred=tumor          fraction=0.00259  data/images-17/NORMAL T2/normal (81).jpeg
+  gt=normal          pred=tumor          fraction=0.00393  data/images-17/NORMAL T2/normal (177).jpeg
+  gt=normal          pred=tumor          fraction=0.00566  data/Br35H/no/no73.jpg
+  gt=normal          pred=tumor          fraction=0.04123  data/Br35H/no/no810.jpg
+  gt=normal          pred=tumor          fraction=0.02516  data/Br35H/no/no1416.jpg
+  gt=normal          pred=tumor          fraction=0.02577  data/Br35H/no/no813.jpg
+  gt=normal          pred=tumor          fraction=0.00168  data/Br35H/no/no321.jpg
+  gt=normal          pred=tumor          fraction=0.00219  data/images-17/NORMAL T2/normal (14).jpeg
+  gt=normal          pred=tumor          fraction=0.00276  data/Br35H/no/no285.jpg
+  gt=normal          pred=tumor          fraction=0.02743  data/Br35H/no/no1255.jpg
+  gt=normal          pred=tumor          fraction=0.00903  data/Br35H/no/no375.jpg
+  gt=normal          pred=tumor          fraction=0.02258  data/Br35H/no/no1023.jpg
+  gt=normal          pred=tumor          fraction=0.00109  data/images-44c/_NORMAL T1/2fc3451d86e463df2f055dad8e0f9e_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.02200  data/Br35H/no/no1455.jpg
+  gt=normal          pred=tumor          fraction=0.00145  data/images-44c/_NORMAL T2/8a34eda68d51592f703a18d26d3b64_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.01868  data/Br35H/no/no323.jpg
+  gt=normal          pred=tumor          fraction=0.01311  data/Br35H/no/no1024.jpg
+  gt=normal          pred=tumor          fraction=0.00232  data/Br35H/no/no532.jpg
+  gt=normal          pred=tumor          fraction=0.02583  data/Br35H/no/no1286.jpg
+  gt=normal          pred=tumor          fraction=0.00176  data/Br35H/no/no562.jpg
+  gt=normal          pred=tumor          fraction=0.03773  data/Br35H/no/no786.jpg
+  gt=normal          pred=tumor          fraction=0.00191  data/Br35H/no/no547.jpg
+  gt=normal          pred=tumor          fraction=0.01332  data/images-17/NORMAL T2/normal (257).jpeg
+  gt=normal          pred=tumor          fraction=0.00785  data/Br35H/no/no784.jpg
+  gt=normal          pred=tumor          fraction=0.00332  data/Br35H/no/no1022.jpg
+  gt=normal          pred=tumor          fraction=0.00867  data/images-44c/_NORMAL T2/4357c5aee56daa3808122bf7647559_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00129  data/Br35H/no/no773.jpg
+  gt=normal          pred=tumor          fraction=0.00625  data/images-44c/_NORMAL T2/dc7717d8502771e82a88b117e90a41_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00250  data/Br35H/no/no1281.jpg
+  gt=normal          pred=tumor          fraction=0.00803  data/Br35H/no/no213.jpg
+  gt=normal          pred=tumor          fraction=0.00179  data/Br35H/no/no1186.jpg
+  gt=normal          pred=tumor          fraction=0.00130  data/Br35H/no/no332.jpg
+  gt=normal          pred=tumor          fraction=0.00114  data/Br35H/no/no1316.jpg
+  gt=normal          pred=tumor          fraction=0.01279  data/images-17/NORMAL T2/normal (162).jpeg
+  gt=normal          pred=tumor          fraction=0.00177  data/images-17/NORMAL T2/normal (48).jpeg
+  gt=normal          pred=tumor          fraction=0.01755  data/images-17/NORMAL T2/normal (193).jpeg
+  gt=normal          pred=tumor          fraction=0.00246  data/images-17/NORMAL T2/normal (23).jpeg
+  gt=normal          pred=tumor          fraction=0.00508  data/Br35H/no/no1036.jpg
+  gt=normal          pred=tumor          fraction=0.00566  data/Br35H/no/no1167.jpg
+  gt=normal          pred=tumor          fraction=0.00672  data/Br35H/no/no994.jpg
+  gt=normal          pred=tumor          fraction=0.00762  data/images-44c/_NORMAL T2/624bff8e1ec7a4b564b89b71d3feaa_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00625  data/images-17/NORMAL T2/normal (216).jpeg
+  gt=normal          pred=tumor          fraction=0.00566  data/Br35H/no/no950.jpg
+  gt=normal          pred=tumor          fraction=0.01687  data/Br35H/no/no764.jpg
+  gt=normal          pred=tumor          fraction=0.00321  data/images-44c/_NORMAL T2/6a57070fa56e94cdc9fa513e0321f4_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00554  data/images-44c/_NORMAL T2/f63db7e2a644c6d658698abba092b7_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00145  data/images-17/NORMAL T2/normal (32).jpeg
+  gt=normal          pred=tumor          fraction=0.01856  data/images-44c/_NORMAL T2/f6802f609fd580fd7a3dfce9650e72_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00389  data/Br35H/no/no1320.jpg
+  gt=normal          pred=tumor          fraction=0.01313  data/images-44c/_NORMAL T1/5e6657cafe4fa116ddf786301827d6_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00148  data/Br35H/no/no246.jpg
+  gt=normal          pred=tumor          fraction=0.00179  data/images-44c/_NORMAL T2/71c4aa7970deca5d6957e1fa03400d_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.01775  data/Br35H/no/no917.jpg
+  gt=normal          pred=tumor          fraction=0.00185  data/Br35H/no/no653.jpg
+  gt=normal          pred=tumor          fraction=0.00564  data/images-17/NORMAL T1/normal (92).jpeg
+  gt=normal          pred=tumor          fraction=0.01154  data/images-17/NORMAL T2/normal (178).jpeg
+  gt=normal          pred=tumor          fraction=0.04164  data/Br35H/no/no831.jpg
+  gt=normal          pred=tumor          fraction=0.00545  data/images-44c/_NORMAL T2/2022-06-10 17_13_51-Normal MRI head - 3-years-old _ Radiology Case _ Radiopaedia.org.jpg
+  gt=normal          pred=tumor          fraction=0.02079  data/Br35H/no/no1029.jpg
+  gt=normal          pred=tumor          fraction=0.00471  data/Br35H/no/no548.jpg
+  gt=normal          pred=tumor          fraction=0.01145  data/Br35H/no/no789.jpg
+  gt=normal          pred=tumor          fraction=0.00470  data/images-44c/_NORMAL T2/8af74da86d98df6d59b8dd08308273_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00140  data/Br35H/no/no76.jpg
+  gt=normal          pred=tumor          fraction=0.00525  data/Br35H/no/no979.jpg
+  gt=normal          pred=tumor          fraction=0.00235  data/Br35H/no/no654.jpg
+  gt=normal          pred=tumor          fraction=0.00201  data/images-17/NORMAL T1/normal (179).jpeg
+  gt=normal          pred=tumor          fraction=0.02779  data/Br35H/no/no985.jpg
+  gt=normal          pred=tumor          fraction=0.02115  data/Br35H/no/no316.jpg
+  gt=normal          pred=tumor          fraction=0.00235  data/images-44c/_NORMAL T2/ad3926a8475736baa1a8051bbaac92_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.03964  data/Br35H/no/no480.jpg
+  gt=normal          pred=tumor          fraction=0.02090  data/images-17/NORMAL T2/normal (164).jpeg
+  gt=normal          pred=tumor          fraction=0.00201  data/images-44c/_NORMAL T1/ec59a2af98a96b0491fa97812481a1_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.01659  data/Br35H/no/no374.jpg
+  gt=normal          pred=tumor          fraction=0.00209  data/Br35H/no/no1477.jpg
+  gt=normal          pred=tumor          fraction=0.00719  data/images-44c/_NORMAL T2/6739b8f05c75b4cdd8b3a28a2cfe9f_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.02120  data/Br35H/no/no511.jpg
+  gt=normal          pred=tumor          fraction=0.02471  data/Br35H/no/no6.jpg
+  gt=normal          pred=tumor          fraction=0.04420  data/Br35H/no/no769.jpg
+  gt=normal          pred=tumor          fraction=0.00217  data/images-17/NORMAL T2/normal (153).jpeg
+  gt=normal          pred=tumor          fraction=0.00527  data/Br35H/no/no1485.jpg
+  gt=normal          pred=tumor          fraction=0.00471  data/Br35H/no/no1030.jpg
+  gt=normal          pred=tumor          fraction=0.05273  data/Br35H/no/no896.jpg
+  gt=normal          pred=tumor          fraction=0.01122  data/Br35H/no/no80.jpg
+  gt=normal          pred=tumor          fraction=0.00151  data/images-44c/_NORMAL T2/b13d58314989d1794b144f1bd3240d_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00437  data/Br35H/no/no269.jpg
+  gt=normal          pred=tumor          fraction=0.00318  data/images-44c/_NORMAL T2/0c04a1f73fa4666cfeb3c0f4ef272f_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00596  data/Br35H/no/no567.jpg
+  gt=normal          pred=tumor          fraction=0.00156  data/images-17/NORMAL T2/normal (62).jpeg
+  gt=normal          pred=tumor          fraction=0.00286  data/Br35H/no/no426.jpg
+  gt=normal          pred=tumor          fraction=0.02796  data/images-44c/_NORMAL T2/7de711cb04513c3dcedcc4fcf75b55_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00629  data/images-44c/_NORMAL T2/89e9803aed004d70d747578f0cc743_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00783  data/Br35H/no/no1233.jpg
+  gt=normal          pred=tumor          fraction=0.00423  data/images-44c/_NORMAL T1/8c0076174c8a7031570f864eaddc04_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00165  data/Br35H/no/no1132.jpg
+  gt=normal          pred=tumor          fraction=0.02234  data/Br35H/no/no468.jpg
+  gt=normal          pred=tumor          fraction=0.00141  data/Br35H/no/no1041.jpg
+  gt=normal          pred=tumor          fraction=0.04174  data/Br35H/no/no602.jpg
+  gt=normal          pred=tumor          fraction=0.00973  data/Br35H/no/no667.jpg
+  gt=normal          pred=tumor          fraction=0.01755  data/images-44c/_NORMAL T2/c0f3220b355811d7d2338e1054c250_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00220  data/Br35H/no/no92.jpg
+  gt=normal          pred=tumor          fraction=0.00218  data/Br35H/no/no448.jpg
+  gt=normal          pred=tumor          fraction=0.00318  data/images-17/NORMAL T2/normal (258).jpeg
+  gt=normal          pred=tumor          fraction=0.00134  data/images-17/NORMAL T1/normal (191).jpeg
+  gt=normal          pred=tumor          fraction=0.00107  data/Br35H/no/no297.jpg
+  gt=normal          pred=tumor          fraction=0.01760  data/images-44c/_NORMAL T2/27dfa3bfbc7ca0eb7ba075e4ccc60f_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.03672  data/Br35H/no/no882.jpg
+  gt=normal          pred=tumor          fraction=0.01856  data/images-17/NORMAL T2/normal (245).jpeg
+  gt=normal          pred=tumor          fraction=0.01764  data/Br35H/no/no1053.jpg
+  gt=normal          pred=tumor          fraction=0.00172  data/Br35H/no/no1.jpg
+  gt=normal          pred=tumor          fraction=0.00105  data/Br35H/no/no181.jpg
+  gt=normal          pred=tumor          fraction=0.00121  data/Br35H/no/no660.jpg
+  gt=normal          pred=tumor          fraction=0.01778  data/images-44c/_NORMAL T2/645bc336660ae7f0f5736e846811cd_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00812  data/images-17/NORMAL T2/normal (200).jpeg
+  gt=normal          pred=tumor          fraction=0.00554  data/images-17/NORMAL T2/normal (241).jpeg
+  gt=normal          pred=tumor          fraction=0.00237  data/Br35H/no/no853.jpg
+  gt=normal          pred=tumor          fraction=0.00321  data/images-17/NORMAL T1/normal (189).jpeg
+  gt=normal          pred=tumor          fraction=0.00235  data/images-17/NORMAL T2/normal (174).jpeg
+  gt=normal          pred=tumor          fraction=0.00129  data/Br35H/no/no1188.jpg
+  gt=normal          pred=tumor          fraction=0.01237  data/Br35H/no/no687.jpg
+  gt=normal          pred=tumor          fraction=0.00147  data/Br35H/no/no710.jpg
+  gt=normal          pred=tumor          fraction=0.02451  data/Br35H/no/no1141.jpg
+  gt=normal          pred=tumor          fraction=0.00192  data/Br35H/no/no109.jpg
+  gt=normal          pred=tumor          fraction=0.00789  data/Br35H/no/no458.jpg
+  gt=normal          pred=tumor          fraction=0.00121  data/Br35H/no/no590.jpg
+  gt=normal          pred=tumor          fraction=0.00287  data/images-44c/_NORMAL T1/be06499c617bcfafac25ff4290e9d1_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.04952  data/Br35H/no/no1205.jpg
+  gt=normal          pred=tumor          fraction=0.00169  data/Br35H/no/no651.jpg
+  gt=normal          pred=tumor          fraction=0.04171  data/Br35H/no/no1283.jpg
+  gt=normal          pred=tumor          fraction=0.01339  data/Br35H/no/no576.jpg
+  gt=normal          pred=tumor          fraction=0.00564  data/images-44c/_NORMAL T1/200ec201c92b8df7848e6d6c8b320f_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00101  data/Br35H/no/no573.jpg
+  gt=normal          pred=tumor          fraction=0.00142  data/Br35H/no/no196.jpg
+  gt=normal          pred=tumor          fraction=0.03312  data/Br35H/no/no200.jpg
+  gt=normal          pred=tumor          fraction=0.01332  data/images-44c/_NORMAL T2/0b1affd66c5d9b629636d9a194a51a_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00107  data/Br35H/no/no161.jpg
+  gt=normal          pred=tumor          fraction=0.00442  data/Br35H/no/no556.jpg
+  gt=normal          pred=tumor          fraction=0.00347  data/images-44c/_NORMAL T2/b91a86c716a72300ac2df2fe4b5de2_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00272  data/Br35H/no/no129.jpg
+  gt=normal          pred=tumor          fraction=0.00265  data/images-44c/_NORMAL T2/9a8c04cde37dc1b3b3d9113dabf41f_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00117  data/Br35H/no/no600.jpg
+  gt=normal          pred=tumor          fraction=0.00910  data/images-17/NORMAL T1/normal (34).jpg
+  gt=normal          pred=tumor          fraction=0.01333  data/Br35H/no/no366.jpg
+  gt=normal          pred=tumor          fraction=0.00246  data/images-44c/_NORMAL T2/6e50bdec5a119f23dd4b4754beb247_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00165  data/Br35H/no/no1085.jpg
+  gt=normal          pred=tumor          fraction=0.00107  data/images-44c/_NORMAL T2/f7719d22da122b98bfbda305940ed2_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00132  data/Br35H/no/no1077.jpg
+  gt=normal          pred=tumor          fraction=0.00427  data/Br35H/no/no1240.jpg
+  gt=normal          pred=tumor          fraction=0.01038  data/Br35H/no/no1273.jpg
+  gt=normal          pred=tumor          fraction=0.00599  data/Br35H/no/no767.jpg
+  gt=normal          pred=tumor          fraction=0.00332  data/Br35H/no/no1481.jpg
+  gt=normal          pred=tumor          fraction=0.00329  data/Br35H/no/no915.jpg
+  gt=normal          pred=tumor          fraction=0.00171  data/Br35H/no/no149.jpg
+  gt=normal          pred=tumor          fraction=0.00232  data/Br35H/no/no355.jpg
+  gt=normal          pred=tumor          fraction=0.00346  data/Br35H/no/no923.jpg
+  gt=normal          pred=tumor          fraction=0.00855  data/Br35H/no/no368.jpg
+  gt=normal          pred=tumor          fraction=0.00203  data/Br35H/no/no517.jpg
+  gt=normal          pred=tumor          fraction=0.01246  data/Br35H/no/no438.jpg
+  gt=normal          pred=tumor          fraction=0.00668  data/Br35H/no/no105.jpg
+  gt=normal          pred=tumor          fraction=0.00196  data/Br35H/no/no151.jpg
+  gt=normal          pred=tumor          fraction=0.00154  data/images-17/NORMAL T1/normal (66).jpg
+  gt=normal          pred=tumor          fraction=0.00989  data/Br35H/no/no809.jpg
+  gt=normal          pred=tumor          fraction=0.00215  data/Br35H/no/no58.jpg
+  gt=normal          pred=tumor          fraction=0.02125  data/Br35H/no/no236.jpg
+  gt=normal          pred=tumor          fraction=0.00209  data/Br35H/no/no1239.jpg
+  gt=normal          pred=tumor          fraction=0.01974  data/images-17/NORMAL T2/normal (13).jpeg
+  gt=normal          pred=tumor          fraction=0.00259  data/images-44c/_NORMAL T2/63f62b65e722e65b1dffa4b0e8db52_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.01976  data/Br35H/no/no133.jpg
+  gt=normal          pred=tumor          fraction=0.03293  data/Br35H/no/no263.jpg
+  gt=normal          pred=tumor          fraction=0.00834  data/Br35H/no/no1288.jpg
+  gt=normal          pred=tumor          fraction=0.00590  data/images-17/NORMAL T1/normal (159).jpeg
+  gt=normal          pred=tumor          fraction=0.00260  data/Br35H/no/no718.jpg
+  gt=normal          pred=tumor          fraction=0.00712  data/Br35H/no/no1335.jpg
+  gt=normal          pred=tumor          fraction=0.00235  data/Br35H/no/no1349.jpg
+  gt=normal          pred=tumor          fraction=0.05301  data/Br35H/no/no1406.jpg
+  gt=normal          pred=tumor          fraction=0.00919  data/Br35H/no/no708.jpg
+  gt=normal          pred=tumor          fraction=0.00634  data/images-44c/_NORMAL T2/8eea7f3f747a3d4111b9ece9fd622b_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00185  data/Br35H/no/no978.jpg
+  gt=normal          pred=tumor          fraction=0.01888  data/Br35H/no/no722.jpg
+  gt=normal          pred=tumor          fraction=0.01183  data/Br35H/no/no779.jpg
+  gt=normal          pred=tumor          fraction=0.00903  data/Br35H/no/no529.jpg
+  gt=normal          pred=tumor          fraction=0.00289  data/Br35H/no/no829.jpg
+  gt=normal          pred=tumor          fraction=0.00439  data/images-44c/_NORMAL T1/2022-06-10 17_14_29-Normal MRI head - 3-years-old _ Radiology Case _ Radiopaedia.org.jpg
+  gt=normal          pred=tumor          fraction=0.00940  data/Br35H/no/no479.jpg
+  gt=normal          pred=tumor          fraction=0.00107  data/images-17/NORMAL T2/normal (145).jpeg
+  gt=normal          pred=tumor          fraction=0.00134  data/images-44c/_NORMAL T1/0a0bc6879f5d5d14c4df229b64b801_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00118  data/Br35H/no/no175.jpg
+  gt=normal          pred=tumor          fraction=0.00469  data/images-44c/_NORMAL T2/8f675df34c31a18a7db142fbdbc14e_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00476  data/images-17/NORMAL T2/normal (209).jpeg
+  gt=normal          pred=tumor          fraction=0.00296  data/Br35H/no/no760.jpg
+  gt=normal          pred=tumor          fraction=0.01265  data/images-17/NORMAL T2/normal (247).jpeg
+  gt=normal          pred=tumor          fraction=0.00105  data/Br35H/no/no1451.jpg
+  gt=normal          pred=tumor          fraction=0.01313  data/images-17/NORMAL T1/normal (22).jpeg
+  gt=normal          pred=tumor          fraction=0.00642  data/Br35H/no/no846.jpg
+  gt=normal          pred=tumor          fraction=0.02382  data/Br35H/no/no1360.jpg
+  gt=normal          pred=tumor          fraction=0.00265  data/Br35H/no/no96.jpg
+  gt=normal          pred=tumor          fraction=0.00167  data/Br35H/no/no598.jpg
+  gt=normal          pred=tumor          fraction=0.02424  data/Br35H/no/no506.jpg
+  gt=normal          pred=tumor          fraction=0.03874  data/Br35H/no/no609.jpg
+  gt=normal          pred=tumor          fraction=0.00620  data/Br35H/no/no727.jpg
+  gt=normal          pred=tumor          fraction=0.00304  data/images-44c/_NORMAL T1/d56d96524ab07020967ca6cfd0afdc_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00292  data/Br35H/no/no747.jpg
+  gt=normal          pred=tumor          fraction=0.04191  data/Br35H/no/no1303.jpg
+  gt=normal          pred=tumor          fraction=0.00344  data/images-17/NORMAL T2/normal (105).jpeg
+  gt=normal          pred=tumor          fraction=0.00393  data/images-44c/_NORMAL T2/af9344f506c32913e602c8f2388347_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00464  data/images-17/NORMAL T2/normal (144).jpeg
+  gt=normal          pred=tumor          fraction=0.00385  data/Br35H/no/no895.jpg
+  gt=normal          pred=tumor          fraction=0.01778  data/Br35H/no/no952.jpg
+  gt=normal          pred=tumor          fraction=0.00175  data/Br35H/no/no632.jpg
+  gt=normal          pred=tumor          fraction=0.02492  data/Br35H/no/no833.jpg
+  gt=normal          pred=tumor          fraction=0.00502  data/Br35H/no/no155.jpg
+  gt=normal          pred=tumor          fraction=0.02353  data/images-17/NORMAL T2/normal (4).jpg
+  gt=normal          pred=tumor          fraction=0.00191  data/Br35H/no/no1459.jpg
+  gt=normal          pred=tumor          fraction=0.00119  data/Br35H/no/no319.jpg
+  gt=normal          pred=tumor          fraction=0.00344  data/images-44c/_NORMAL T2/303afa9591eb4a737a6de15d6a13af_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00264  data/Br35H/no/no365.jpg
+  gt=normal          pred=tumor          fraction=0.01309  data/Br35H/no/no753.jpg
+  gt=normal          pred=tumor          fraction=0.00812  data/images-44c/_NORMAL T2/cb9d68cad83e992ea1eeb22f202fe9_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00108  data/Br35H/no/no435.jpg
+  gt=normal          pred=tumor          fraction=0.04630  data/Br35H/no/no1122.jpg
+  gt=normal          pred=tumor          fraction=0.00720  data/Br35H/no/no1282.jpg
+  gt=normal          pred=tumor          fraction=0.00234  data/Br35H/no/no1474.jpg
+  gt=normal          pred=tumor          fraction=0.00144  data/Br35H/no/no156.jpg
+  gt=normal          pred=tumor          fraction=0.00790  data/Br35H/no/no8.jpg
+  gt=normal          pred=tumor          fraction=0.00141  data/Br35H/no/no412.jpg
+  gt=normal          pred=tumor          fraction=0.00321  data/images-44c/_NORMAL T1/ff2c9645267ce5673fd764fb1bc721_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00189  data/Br35H/no/no1487.jpg
+  gt=normal          pred=tumor          fraction=0.01578  data/Br35H/no/no110.jpg
+  gt=normal          pred=tumor          fraction=0.00340  data/Br35H/no/no248.jpg
+  gt=normal          pred=tumor          fraction=0.00175  data/Br35H/no/no726.jpg
+  gt=normal          pred=tumor          fraction=0.00151  data/images-17/NORMAL T2/normal (179).jpeg
+  gt=normal          pred=tumor          fraction=0.00464  data/images-44c/_NORMAL T2/83013fc327babc852e0f2d0f31fad1_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00413  data/Br35H/no/no541.jpg
+  gt=normal          pred=tumor          fraction=0.00623  data/images-17/NORMAL T2/normal (167).jpeg
+  gt=normal          pred=tumor          fraction=0.00539  data/Br35H/no/no276.jpg
+  gt=normal          pred=tumor          fraction=0.01447  data/Br35H/no/no104.jpg
+  gt=normal          pred=tumor          fraction=0.00305  data/images-17/NORMAL T2/normal (74).jpeg
+  gt=normal          pred=tumor          fraction=0.00864  data/Br35H/no/no551.jpg
+  gt=normal          pred=tumor          fraction=0.00185  data/Br35H/no/no992.jpg
+  gt=normal          pred=tumor          fraction=0.00126  data/Br35H/no/no484.jpg
+  gt=normal          pred=tumor          fraction=0.00132  data/Br35H/no/no255.jpg
+  gt=normal          pred=tumor          fraction=0.01228  data/images-44c/_NORMAL T2/431c7733ee1285a0de3bf98bc387f8_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.04717  data/Br35H/no/no1068.jpg
+  gt=normal          pred=tumor          fraction=0.00265  data/images-17/NORMAL T2/normal (44).jpeg
+  gt=normal          pred=tumor          fraction=0.00175  data/Br35H/no/no75.jpg
+  gt=normal          pred=tumor          fraction=0.00276  data/Br35H/no/no1434.jpg
+  gt=normal          pred=tumor          fraction=0.00440  data/Br35H/no/no808.jpg
+  gt=normal          pred=tumor          fraction=0.00431  data/Br35H/no/no1399.jpg
+  gt=normal          pred=tumor          fraction=0.00471  data/Br35H/no/no1120.jpg
+  gt=normal          pred=tumor          fraction=0.00870  data/images-44c/_NORMAL T2/8cb2e1519b70724dc2356f8b6e1d69_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.01154  data/images-44c/_NORMAL T2/b8c73556e7fa939dddb55e535af190_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00201  data/Br35H/no/no287.jpg
+  gt=normal          pred=tumor          fraction=0.00302  data/images-17/NORMAL T1/normal (36).jpeg
+  gt=normal          pred=tumor          fraction=0.00423  data/images-17/NORMAL T1/normal (38).jpeg
+  gt=normal          pred=tumor          fraction=0.01358  data/images-44c/_NORMAL T1/5a6250d78725c36ba2739eb7191e92_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.02464  data/Br35H/no/no284.jpg
+  gt=normal          pred=tumor          fraction=0.01096  data/Br35H/no/no507.jpg
+  gt=normal          pred=tumor          fraction=0.04203  data/Br35H/no/no1037.jpg
+  gt=normal          pred=tumor          fraction=0.00836  data/Br35H/no/no830.jpg
+  gt=normal          pred=tumor          fraction=0.00135  data/Br35H/no/no1453.jpg
+  gt=normal          pred=tumor          fraction=0.01620  data/Br35H/no/no518.jpg
+  gt=normal          pred=tumor          fraction=0.00177  data/Br35H/no/no97.jpg
+  gt=normal          pred=tumor          fraction=0.01004  data/Br35H/no/no596.jpg
+  gt=normal          pred=tumor          fraction=0.03040  data/Br35H/no/no549.jpg
+  gt=normal          pred=tumor          fraction=0.00737  data/Br35H/no/no384.jpg
+  gt=normal          pred=tumor          fraction=0.01124  data/images-44c/_NORMAL T2/3cfef1f912857fd2adb0498c2a784e_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.02216  data/images-44c/_NORMAL T2/ba29d24104918a30130f4003faac71_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00714  data/Br35H/no/no134.jpg
+  gt=normal          pred=tumor          fraction=0.00133  data/Br35H/no/no275.jpg
+  gt=normal          pred=tumor          fraction=0.00646  data/Br35H/no/no396.jpg
+  gt=normal          pred=tumor          fraction=0.00139  data/images-17/NORMAL T1/normal (4).jpeg
+  gt=normal          pred=tumor          fraction=0.00623  data/images-44c/_NORMAL T2/a9dc3542183ecca34c98220f3a7485_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00133  data/Br35H/no/no114.jpg
+  gt=normal          pred=tumor          fraction=0.01114  data/Br35H/no/no417.jpg
+  gt=normal          pred=tumor          fraction=0.02291  data/Br35H/no/no1200.jpg
+  gt=normal          pred=tumor          fraction=0.00178  data/Br35H/no/no377.jpg
+  gt=normal          pred=tumor          fraction=0.03797  data/Br35H/no/no1051.jpg
+  gt=normal          pred=tumor          fraction=0.02796  data/images-17/NORMAL T2/normal (29).jpeg
+  gt=normal          pred=tumor          fraction=0.02550  data/Br35H/no/no29.jpg
+  gt=normal          pred=tumor          fraction=0.00576  data/Br35H/no/no1306.jpg
+  gt=normal          pred=tumor          fraction=0.01160  data/Br35H/no/no942.jpg
+  gt=normal          pred=tumor          fraction=0.00302  data/images-44c/_NORMAL T1/8b7471b55c7bb898910e7bba1728a4_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00101  data/Br35H/no/no205.jpg
+  gt=normal          pred=tumor          fraction=0.01470  data/Br35H/no/no147.jpg
+  gt=normal          pred=tumor          fraction=0.00716  data/Br35H/no/no540.jpg
+  gt=normal          pred=tumor          fraction=0.03790  data/Br35H/no/no48.jpg
+  gt=normal          pred=tumor          fraction=0.00151  data/Br35H/no/no206.jpg
+  gt=normal          pred=tumor          fraction=0.01663  data/Br35H/no/no597.jpg
+  gt=normal          pred=tumor          fraction=0.00629  data/images-17/NORMAL T2/normal (97).jpeg
+  gt=normal          pred=tumor          fraction=0.00253  data/images-44c/_NORMAL T2/2097062eda0167a6909a1d6426760c_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00535  data/Br35H/no/no1196.jpg
+  gt=normal          pred=tumor          fraction=0.00265  data/images-44c/_NORMAL T1/47b0cd34d521cd413b486df272cecf_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00139  data/Br35H/no/no159.jpg
+  gt=normal          pred=tumor          fraction=0.00807  data/Br35H/no/no1102.jpg
+  gt=normal          pred=tumor          fraction=0.00495  data/images-17/NORMAL T1/normal (8).jpg
+  gt=normal          pred=tumor          fraction=0.00209  data/Br35H/no/no1405.jpg
+  gt=normal          pred=tumor          fraction=0.01862  data/Br35H/no/no537.jpg
+  gt=normal          pred=tumor          fraction=0.00256  data/Br35H/no/no1350.jpg
+  gt=normal          pred=tumor          fraction=0.00634  data/images-17/NORMAL T2/normal (42).jpeg
+  gt=normal          pred=tumor          fraction=0.00867  data/images-17/NORMAL T2/normal (131).jpeg
+  gt=normal          pred=tumor          fraction=0.02194  data/Br35H/no/no501.jpg
+  gt=normal          pred=tumor          fraction=0.00292  data/Br35H/no/no1449.jpg
+  gt=normal          pred=tumor          fraction=0.00501  data/Br35H/no/no1322.jpg
+  gt=normal          pred=tumor          fraction=0.03797  data/Br35H/no/no1104.jpg
+  gt=normal          pred=tumor          fraction=0.00599  data/Br35H/no/no137.jpg
+  gt=normal          pred=tumor          fraction=0.00735  data/Br35H/no/no625.jpg
+  gt=normal          pred=tumor          fraction=0.00271  data/Br35H/no/no322.jpg
+  gt=normal          pred=tumor          fraction=0.01446  data/Br35H/no/no469.jpg
+  gt=normal          pred=tumor          fraction=0.00113  data/Br35H/no/no359.jpg
+  gt=normal          pred=tumor          fraction=0.00320  data/Br35H/no/no752.jpg
+  gt=normal          pred=tumor          fraction=0.00590  data/images-44c/_NORMAL T1/cebaebad3eff5c44d228519c57548f_big_gallery.jpeg
+  gt=normal          pred=tumor          fraction=0.00439  data/images-17/NORMAL T1/normal (26).jpeg
+  gt=normal          pred=tumor          fraction=0.00164  data/Br35H/no/no42.jpg
+  gt=normal          pred=tumor          fraction=0.01996  data/Br35H/no/no759.jpg
+  gt=normal          pred=tumor          fraction=0.00119  data/Br35H/no/no1238.jpg
+  gt=normal          pred=tumor          fraction=0.00910  data/images-44c/_NORMAL T1/2022-06-13 09_38_06-Normal MRI brain _ Radiology Case _ Radiopaedia.org.jpg
+  gt=normal          pred=tumor          fraction=0.00207  data/images-44c/_NORMAL T2/2022-06-10 17_12_33-Normal MRI head - 3-years-old _ Radiology Case _ Radiopaedia.org.jpg
+  gt=normal          pred=tumor          fraction=0.00272  data/Br35H/no/no1480.jpg
+
+============================================================
+  SAM3 — Summary
+============================================================
+  sam3_bbox records total : 12024
+  Tumor images            : 9978
+    SAM3 missed tumor     : 1018
+    → also mis-classified : 128
+  Normal images           : 2046
+    SAM3 found tumor pxls : 521
+    → also pred as tumor  : 359
