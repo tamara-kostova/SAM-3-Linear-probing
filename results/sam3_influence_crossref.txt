@@ -1,0 +1,44 @@
+=================================================================
+  SAM3 INFLUENCE CROSS-REFERENCE ANALYSIS
+=================================================================
+
+  Matched images (present in both results): 11038
+  Both correct:                             8288  (75.1%)
+  Both wrong:                               779  (7.1%)
+  SAM3 HURT  (standalone✓ → pipeline✗):    727  (6.6%)
+  SAM3 HELPED (standalone✗ → pipeline✓):   1244  (11.3%)
+
+=================================================================
+  A) SAM3 HURT — standalone correct but pipeline wrong
+     (SAM3 bounding box misled MedGemma)
+=================================================================
+  Total: 727
+
+  Ground-truth tumor:  150
+  Ground-truth normal: 577
+
+  Normal images hurt — pipeline predicted:
+    → tumor                     513
+    → other abnormalities       55
+    → multiple sclerosis        8
+    → hemorrhagic               1
+
+  Tumor images hurt — pipeline predicted:
+    → other abnormalities       87
+    → normal                    36
+    → cyst                      11
+    → stroke                    8
+    → multiple sclerosis        8
+
+  Hurt tumor images by subtype (gt_sub → pipeline_pred):
+    carcinoma            n=2    → multiple sclerosis(2)
+    germinoma            n=1    → normal(1)
+    glioma               n=12   → other abnormalities(7), cyst(3), normal(1), multiple sclerosis(1)
+    granuloma            n=4    → normal(3), other abnormalities(1)
+    meduloblastoma       n=3    → normal(2), other abnormalities(1)
+    meningioma           n=11   → other abnormalities(7), normal(3), cyst(1)
+    other_abnormalities  n=11   → other abnormalities(5), stroke(4), normal(2)
+    papilloma            n=1    → other abnormalities(1)
+    schwannoma           n=19   → other abnormalities(11), normal(5), multiple sclerosis(1), stroke(1), cyst(1)
+    tuberculoma          n=2    → multiple sclerosis(2)
+    tumor                n=84   → other abnormalities(54), normal(19), cyst(6), stroke(3), multiple sclerosis(2)
