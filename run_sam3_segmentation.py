@@ -135,7 +135,7 @@ def find_image_path(base_path, filename):
 # ============================================================================
 
 class SAM3Segmentor:
-    def __init__(self, checkpoint_path, bpe_path, device="auto"):
+    def __init__(self, checkpoint_path, bpe_path, device="auto", threshold=None):
         from sam3.sam3 import build_sam3_image_model
 
         print("Loading SAM3...")
@@ -157,6 +157,7 @@ class SAM3Segmentor:
             param.requires_grad = False
         self.sam3.eval()
 
+        self.threshold = threshold
         print("[OK] SAM3 loaded")
 
     @torch.no_grad()
@@ -196,7 +197,11 @@ class SAM3Segmentor:
             mode="bilinear", align_corners=False
         )
 
-        mask = torch.argmax(logits, dim=1).squeeze(0).cpu().numpy()
+        if self.threshold is not None:
+            probs = torch.softmax(logits, dim=1)
+            mask = (probs[:, 1] > self.threshold).squeeze(0).cpu().numpy().astype(np.uint8)
+        else:
+            mask = torch.argmax(logits, dim=1).squeeze(0).cpu().numpy()
 
         del img_tensor, features, logits
         if self.device.startswith("cuda"):
@@ -305,7 +310,7 @@ def run_segmentation(args):
         dataset = TumorDatasetLoader(args.data_dirs)
         samples = dataset.samples
 
-    segmentor = SAM3Segmentor(args.sam3_checkpoint, args.bpe_path, args.device)
+    segmentor = SAM3Segmentor(args.sam3_checkpoint, args.bpe_path, args.device, args.threshold)
     if args.max_samples:
         samples = samples[:args.max_samples]
 
@@ -417,6 +422,9 @@ def parse_args():
     parser.add_argument("--max_samples", type=int, default=None,
                         help="Cap number of images (for testing)")
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    parser.add_argument("--threshold", type=float, default=None,
+                        help="Confidence threshold for tumor class (0-1). Uses softmax probabilities. "
+                             "If not set, uses argmax (equivalent to 0.5 but without softmax).")
     args = parser.parse_args()
     if not args.data_dirs and not args.input_manifest:
         parser.error("Provide either --data_dirs or --input_manifest")
