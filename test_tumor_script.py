@@ -9,17 +9,17 @@ Usage:
         --test_data /path/to/BraTS2021_Training_Data \
         --checkpoint ./checkpoints/final_probe.pth \
         --bpe_path sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz \
-        --num_patients 125
+        --patients_csv results/patient_overlap/brats2021_non_overlap_125.csv
 """
 
 import os
 import argparse
+import csv
 import torch
 import torch.nn as nn
 import numpy as np
 import h5py
 import glob
-import random
 from pathlib import Path
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -166,18 +166,42 @@ class SAM3FeatureExtractor:
         return backbone_out
 
 
-def select_random_patients(data_root, num_patients=125, seed=42):
-    all_patients = sorted(glob.glob(os.path.join(data_root, "BraTS2021_*")))
+def select_patients_from_csv(data_root, csv_path):
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Patients CSV not found: {csv_path}")
+
+    selected = []
+    missing = []
+    seen = set()
+    with open(csv_path, newline='') as f:
+        reader = csv.DictReader(f)
+        if 'brats21_id' not in (reader.fieldnames or []):
+            raise ValueError(f"CSV must contain 'brats21_id' column: {csv_path}")
+        for row in reader:
+            patient_id = (row.get('brats21_id') or '').strip()
+            if not patient_id or patient_id in seen:
+                continue
+            seen.add(patient_id)
+            patient_dir = os.path.join(data_root, patient_id)
+            if os.path.isdir(patient_dir):
+                selected.append(patient_dir)
+            else:
+                missing.append(patient_id)
+
     print(f"\n{'='*80}")
     print("PATIENT SELECTION")
     print('='*80)
-    print(f"Total: {len(all_patients)} patients")
-    print(f"Selecting: {num_patients} patients")
-    
-    random.seed(seed)
-    selected = random.sample(all_patients, min(num_patients, len(all_patients)))
-    
-    print(f"✓ Selected {len(selected)} patients (seed={seed})")
+    print(f"CSV file: {csv_path}")
+    print(f"Requested from CSV: {len(seen)}")
+    print(f"Found in dataset: {len(selected)}")
+    if missing:
+        print(f"Missing from dataset: {len(missing)}")
+        print(f"First 5 missing: {missing[:5]}")
+
+    if not selected:
+        raise RuntimeError("No valid patient directories found from CSV selection.")
+
+    print(f"✓ Selected {len(selected)} patients from CSV")
     print(f"\nFirst 5 selected:")
     for i, p in enumerate(selected[:5]):
         print(f"  {i+1}. {os.path.basename(p)}")
@@ -454,16 +478,18 @@ def test_model(model, test_loader, device='cuda'):
 def main(args):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(args.save_dir, exist_ok=True)
-    
+
+    # Select patients from CSV
+    selected = select_patients_from_csv(args.test_data, args.patients_csv)
+    selected_count = len(selected)
+
     print(f"\n{'='*80}")
-    print(f"TESTING ON {args.num_patients} BRATS 2021 PATIENTS")
+    print(f"TESTING ON {selected_count} BRATS 2021 PATIENTS")
     print('='*80)
     print(f"Test data: {args.test_data}")
+    print(f"Patients CSV: {args.patients_csv}")
     print(f"Device: {device}")
     print('='*80)
-    
-    # Select patients
-    selected = select_random_patients(args.test_data, args.num_patients, args.seed)
     
     with open(os.path.join(args.save_dir, 'patients.txt'), 'w') as f:
         for p in selected:
@@ -502,7 +528,7 @@ def main(args):
     
     # Save
     with open(os.path.join(args.save_dir, 'results.txt'), 'w') as f:
-        f.write(f"Test on {args.num_patients} BraTS 2021 patients\n")
+        f.write(f"Test on {selected_count} BraTS 2021 patients\n")
         f.write("="*60 + "\n")
 
         for k, v in results.items():
@@ -514,7 +540,7 @@ def main(args):
 
     plot_metrics(results, args.save_dir)
     plot_predictions(features_path, model, args.save_dir, device, num_samples=5)
-    create_plots(results, args.save_dir, args.num_patients)
+    create_plots(results, args.save_dir, selected_count)
     if 'history' in ckpt:
         print(f"\nComparison:")
         print(f"  Training: {ckpt['history']['val_ious'][-1]:.4f}")
@@ -529,9 +555,12 @@ def parse_args():
     parser.add_argument('--test_data', required=True)
     parser.add_argument('--checkpoint', required=True)
     parser.add_argument('--bpe_path', required=True)
-    parser.add_argument('--num_patients', type=int, default=125)
+    parser.add_argument(
+        '--patients_csv',
+        default='results/patient_overlap/brats2021_non_overlap_125.csv',
+        help="CSV containing a 'brats21_id' column for deterministic patient selection",
+    )
     parser.add_argument('--save_dir', default='./test_125_fixed')
-    parser.add_argument('--seed', type=int, default=42)
     return parser.parse_args()
 
 

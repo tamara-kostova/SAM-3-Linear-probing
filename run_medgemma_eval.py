@@ -204,7 +204,7 @@ class MedGemmaAnalyzer:
         image.save(buffer, format="PNG")
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-    def analyze(self, image, system_prompt=SYSTEM_PROMPT, timeout=120, max_tokens=256,
+    def analyze(self, image, system_prompt=SYSTEM_PROMPT, timeout=120, max_tokens=1000,
                 retries=2, retry_backoff=2.0):
         image_b64 = self.encode_image(image)
         payload = {
@@ -478,7 +478,7 @@ def parse_args():
                         help="Cap number of images (for testing)")
     parser.add_argument("--request_timeout", type=int, default=120,
                         help="Per-request timeout in seconds")
-    parser.add_argument("--max_tokens", type=int, default=256,
+    parser.add_argument("--max_tokens", type=int, default=1000,
                         help="Max completion tokens per MedGemma response")
     parser.add_argument("--retries", type=int, default=2,
                         help="Retry attempts for timeout/parse/network errors")
