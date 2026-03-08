@@ -1,0 +1,6 @@
+MS test results
+test_root=MS/MSLesSeg Dataset/test
+checkpoint=./results/probe_ms.pth
+accuracy=0.984944
+iou=0.080605
+dice=0.149186

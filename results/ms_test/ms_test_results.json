@@ -1,0 +1,7 @@
+{
+  "test_root": "MS/MSLesSeg Dataset/test",
+  "checkpoint": "./results/probe_ms.pth",
+  "accuracy": 0.9849444627891163,
+  "iou": 0.08060536887494008,
+  "dice": 0.14918557911453176
+}
