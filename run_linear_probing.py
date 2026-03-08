@@ -324,7 +324,7 @@ def parse_args():
     p.add_argument('--epochs',          type=int,   default=20)
     p.add_argument('--batch_size',      type=int,   default=64)
     p.add_argument('--lr',              type=float, default=1e-3)
-    p.add_argument('--feat_batch_size', type=int,   default=16,
+    p.add_argument('--feat_batch_size', type=int,   default=4,
                    help='Batch size for SAM3 feature extraction (smaller = less VRAM)')
     p.add_argument('--rebuild_cache',   action='store_true')
 

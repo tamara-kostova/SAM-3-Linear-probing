@@ -15,3 +15,6 @@ venv
 *.csv
 data
 segmented
+*.tar
+ISLES-2022
+MS

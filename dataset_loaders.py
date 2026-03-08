@@ -5,7 +5,7 @@ Dataset loaders for MS Lesion (MSLesSeg) and Stroke (ISLES 2022) datasets.
 Directory structures expected:
   MSLesSeg:
     <data_root>/
-      Patient_*/
+      Patient_*/  (or patient_*, sub-*, P*)
         *FLAIR*.nii[.gz]   (or T2_FLAIR, etc.)
         *T1*.nii[.gz]
         *lesion*.nii[.gz]  (or *mask*, *seg*)
@@ -107,7 +107,8 @@ class MSLesSegDataset(Dataset):
                   '*T1*.nii',       '*t1*.nii'],
     }
     _MASK_PATTERNS = ['*lesion*.nii.gz', '*mask*.nii.gz', '*seg*.nii.gz',
-                      '*Lesion*.nii.gz', '*lesion*.nii',  '*mask*.nii']
+                      '*Lesion*.nii.gz', '*lesion*.nii',  '*mask*.nii',
+                      '*MASK*.nii.gz',   '*MASK*.nii',    '*SEG*.nii.gz']
 
     def __init__(self, data_root, cache_dir,
                  modality='flair', img_size=1008,
@@ -136,12 +137,14 @@ class MSLesSegDataset(Dataset):
         patient_dirs = sorted(
             glob.glob(os.path.join(data_root, 'Patient_*')) +
             glob.glob(os.path.join(data_root, 'patient_*')) +
-            glob.glob(os.path.join(data_root, 'sub-*'))     # BIDS-style
+            glob.glob(os.path.join(data_root, 'sub-*')) +      # BIDS-style
+            glob.glob(os.path.join(data_root, 'P[0-9]*')) +    # MSLesSeg style
+            glob.glob(os.path.join(data_root, 'p[0-9]*'))
         )
         if not patient_dirs:
             raise FileNotFoundError(
                 f"No patient directories found in {data_root}.\n"
-                "Expected folders named Patient_*, patient_*, or sub-*."
+                "Expected folders named Patient_*, patient_*, sub-*, or P*."
             )
 
         cache_paths = []
@@ -149,36 +152,49 @@ class MSLesSegDataset(Dataset):
 
         for pdir in tqdm(patient_dirs, desc='Processing MS patients'):
             pid = os.path.basename(pdir)
-            img_path  = find_file(pdir, patterns)
-            mask_path = find_file(pdir, self._MASK_PATTERNS)
-
-            if img_path is None or mask_path is None:
-                print(f"  ⚠ Skipping {pid}: missing image or mask")
-                continue
-
-            img_vol  = nib.load(img_path).get_fdata()
-            mask_vol = nib.load(mask_path).get_fdata()
-
-            n_slices = img_vol.shape[2]
             rng = np.random.default_rng(seed=42)
+            # Support both flat patient folders and per-visit subfolders (e.g. T1/T2/T3).
+            scan_dirs = [pdir] + [
+                d for d in sorted(glob.glob(os.path.join(pdir, '*')))
+                if os.path.isdir(d)
+            ]
+            found_any = False
 
-            for s in range(n_slices):
-                img_sl  = normalize_slice(img_vol[:, :, s])
-                mask_sl = mask_vol[:, :, s]
-                has_lesion = mask_sl.any()
+            for scan_dir in scan_dirs:
+                img_path  = find_file(scan_dir, patterns)
+                mask_path = find_file(scan_dir, self._MASK_PATTERNS)
 
-                # Subsample empty slices to avoid overwhelming background
-                if not has_lesion:
-                    if rng.random() > empty_ratio:
-                        continue
+                if img_path is None or mask_path is None:
+                    continue
 
-                img_t  = to_rgb_tensor(img_sl, img_size)
-                mask_t = to_mask_tensor(mask_sl, img_size)
+                found_any = True
+                sid = os.path.basename(scan_dir)
+                sample_prefix = pid if scan_dir == pdir else f"{pid}_{sid}"
 
-                out = os.path.join(self.cache_dir, f"{pid}_{s:03d}.pt")
-                torch.save({'image': img_t, 'mask': mask_t,
-                            'has_lesion': has_lesion}, out)
-                cache_paths.append(out)
+                img_vol  = nib.load(img_path).get_fdata()
+                mask_vol = nib.load(mask_path).get_fdata()
+                n_slices = img_vol.shape[2]
+
+                for s in range(n_slices):
+                    img_sl  = normalize_slice(img_vol[:, :, s])
+                    mask_sl = mask_vol[:, :, s]
+                    has_lesion = mask_sl.any()
+
+                    # Subsample empty slices to avoid overwhelming background
+                    if not has_lesion:
+                        if rng.random() > empty_ratio:
+                            continue
+
+                    img_t  = to_rgb_tensor(img_sl, img_size)
+                    mask_t = to_mask_tensor(mask_sl, img_size)
+
+                    out = os.path.join(self.cache_dir, f"{sample_prefix}_{s:03d}.pt")
+                    torch.save({'image': img_t, 'mask': mask_t,
+                                'has_lesion': has_lesion}, out)
+                    cache_paths.append(out)
+
+            if not found_any:
+                print(f"  ⚠ Skipping {pid}: missing image or mask")
 
         return cache_paths
 
@@ -188,7 +204,7 @@ class MSLesSegDataset(Dataset):
         return len(self.cache_paths)
 
     def __getitem__(self, idx):
-        d = torch.load(self.cache_paths[idx], weights_only=True)
+        d = torch.load(self.cache_paths[idx], weights_only=False)
         return d['image'], d['mask']
 
     # ── Utility ─────────────────────────────────────────────────
@@ -201,7 +217,7 @@ class MSLesSegDataset(Dataset):
         """
         counts = np.zeros(2, dtype=np.int64)
         for p in tqdm(self.cache_paths, desc='Computing class weights'):
-            d = torch.load(p, weights_only=True)
+            d = torch.load(p, weights_only=False)
             mask = d['mask'].numpy()
             counts[0] += (mask == 0).sum()
             counts[1] += (mask == 1).sum()
@@ -371,5 +387,5 @@ class ISLESStrokeDataset(Dataset):
         return len(self.cache_paths)
 
     def __getitem__(self, idx):
-        d = torch.load(self.cache_paths[idx], weights_only=True)
+        d = torch.load(self.cache_paths[idx], weights_only=False)
         return d['image'], d['mask']
