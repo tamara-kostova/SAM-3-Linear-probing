@@ -54,34 +54,43 @@ Checkpoint: `checkpoints/final_probe.pth`.
 
 ## 3. Task 2 — MS Lesion Segmentation (MSLesSeg)
 
-### Zero-shot SAM3 (original notebook — lesion slices only, best slice per case)
+### Zero-shot SAM3 — corrected protocol (test set, all slices, global pixel metrics)
+Notebook: `12_SAM3_MS_dataset_all_slices.ipynb` — run 2026-03-10, prompt: "white matter lesion"
+
+| Metric      | Value  |
+|-------------|--------|
+| Dice        | **0.052** |
+| IoU         | 0.027  |
+| Accuracy    | 0.999  |
+| Sensitivity | 0.027  |
+| Specificity | 1.000  |
+
+Dataset: 22 test cases, 4 004 slices total (1 751 with lesion, 2 253 empty).
+
+<details>
+<summary>Original zero-shot (lesion slices only, best slice per case — not comparable)</summary>
+
 | Metric | Value | Note |
 |--------|-------|------|
-| Dice   | 0.535 | Evaluated on best lesion slice per case only |
+| Dice   | 0.535 | Best lesion slice per case, per-slice Dice averaged |
+
+</details>
 
 ### Linear probe (test set, all slices, `empty_ratio=1.0`)
-| Metric | Value |
-|--------|-------|
-| Accuracy | 0.985 |
-| IoU      | 0.081 |
+| Metric   | Value     |
+|----------|-----------|
+| Accuracy | 0.985     |
+| IoU      | 0.081     |
 | Dice     | **0.149** |
 
-**The linear probe performs worse than zero-shot SAM3.**
+**The linear probe outperforms the corrected zero-shot SAM3 (+0.097 Dice).**
 
-### Evaluation mismatch (important caveat)
-The zero-shot and probe results above are **not directly comparable**:
+The original zero-shot Dice of 0.535 was evaluated only on the best lesion slice per
+case; when re-run on all slices with global pixel-level metrics (matching the linear
+probe protocol), zero-shot drops to 0.052. The probe's 0.149 Dice is a genuine
+improvement.
 
-| | Zero-shot notebook | Linear probe |
-|---|---|---|
-| Cases evaluated | test folder, best slice only | test folder, all slices |
-| Empty slices included | No | Yes (100%) |
-| Metric computation | per-slice Dice, averaged | global pixel TP/FP/FN/TN |
-
-The corrected zero-shot evaluation (all slices, global pixel metrics — notebook
-`12_SAM3_MS_dataset_all_slices.ipynb`) is pending re-run. Results will be updated
-when available.
-
-### Why the probe underperformed
+### Why the probe still underperforms supervised baselines
 1. **Small dataset** — MSLesSeg has only ~75 patients (~22 train, ~53 test in provided split)
 2. **Train/test distribution mismatch** — probe trained with `empty_ratio=0.3`
    (30% of empty slices) but tested with `empty_ratio=1.0` (all slices). The probe
@@ -199,11 +208,11 @@ MedGemma to predict normal or other abnormality on confirmed tumour cases.
 | Task | Zero-shot Dice | Probe Dice | Δ | Comparable? |
 |------|---------------|------------|---|-------------|
 | Tumor (BraTS) | 0.450 | **0.836** (IoU 0.719, Acc 0.993) | +0.386 | Yes (all slices, 125-patient test set) |
-| MS (MSLesSeg) | 0.535* | 0.149 | −0.386 | No* — protocol mismatch |
-| Stroke (ISLES) | 0.492* | 0.224 | −0.268 | No* — protocol mismatch |
+| MS (MSLesSeg) | **0.052** | 0.149 | **+0.097** | Yes (corrected — all slices, global pixel, test set) |
+| Stroke (ISLES) | 0.492† | 0.224 | −0.268 | No† — protocol mismatch |
 
-\* Zero-shot evaluated on lesion-positive slices only (best slice per case). Corrected
-  evaluation pending.
+† Stroke zero-shot evaluated on best slice per case (25/100 cases). Corrected all-slices
+  evaluation still pending (`14_SAM3_Stroke_dataset_all_slices.ipynb`).
 
 ---
 
