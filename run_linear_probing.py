@@ -26,8 +26,9 @@ Usage
 
 import os
 import argparse
+import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 # ── project imports ──────────────────────────────────────────────
 from dataset_loaders import MSLesSegDataset, ISLESStrokeDataset
@@ -103,9 +104,37 @@ def get_or_compute_features(
 # ─────────────────────────────────────────────────────────────────
 
 def build_datasets(args):
-    """Return dict of {task: (train_dataset, val_dataset)}."""
+    """Return dict of {task: (train_dataset, val_dataset, test_dataset_or_None)}."""
     import torch.utils.data as tud
     splits = {}
+    split_gen = torch.Generator().manual_seed(42)
+
+    def split_train_val_test(full_ds):
+        n_total = len(full_ds)
+        n_test = int(n_total * args.test_ratio)
+        n_val = int(n_total * args.val_ratio)
+        n_train = n_total - n_val - n_test
+        if n_train <= 0:
+            raise ValueError(
+                f"Invalid split: total={n_total}, val={n_val}, test={n_test}. "
+                "Adjust --val_ratio/--test_ratio."
+            )
+        if n_val <= 0:
+            raise ValueError(
+                "Validation split is empty. Increase --val_ratio "
+                f"(current {args.val_ratio})."
+            )
+
+        if n_test > 0:
+            train_ds, val_ds, test_ds = tud.random_split(
+                full_ds, [n_train, n_val, n_test], generator=split_gen
+            )
+        else:
+            train_ds, val_ds = tud.random_split(
+                full_ds, [n_train, n_val], generator=split_gen
+            )
+            test_ds = None
+        return train_ds, val_ds, test_ds
 
     if 'tumor' in args.tasks:
         assert HAS_BRATS, "linear_probing.py not found in PYTHONPATH"
@@ -115,13 +144,12 @@ def build_datasets(args):
             modality=args.tumor_modality,
             force_rebuild=args.rebuild_cache,
         )
-        n_train = int(0.8 * len(full))
-        train_ds, val_ds = tud.random_split(
-            full, [n_train, len(full) - n_train],
-            generator=torch.Generator().manual_seed(42)
-        )
-        splits['tumor'] = (train_ds, val_ds)
-        print(f"✓ Tumor  — train={len(train_ds)}  val={len(val_ds)}")
+        train_ds, val_ds, test_ds = split_train_val_test(full)
+        splits['tumor'] = (train_ds, val_ds, test_ds)
+        msg = f"✓ Tumor  — train={len(train_ds)}  val={len(val_ds)}"
+        if test_ds is not None:
+            msg += f"  test={len(test_ds)}"
+        print(msg)
 
     if 'ms' in args.tasks:
         full = MSLesSegDataset(
@@ -131,13 +159,12 @@ def build_datasets(args):
             empty_ratio=args.ms_empty_ratio,
             force_rebuild=args.rebuild_cache,
         )
-        n_train = int(0.8 * len(full))
-        train_ds, val_ds = tud.random_split(
-            full, [n_train, len(full) - n_train],
-            generator=torch.Generator().manual_seed(42)
-        )
-        splits['ms'] = (train_ds, val_ds)
-        print(f"✓ MS     — train={len(train_ds)}  val={len(val_ds)}")
+        train_ds, val_ds, test_ds = split_train_val_test(full)
+        splits['ms'] = (train_ds, val_ds, test_ds)
+        msg = f"✓ MS     — train={len(train_ds)}  val={len(val_ds)}"
+        if test_ds is not None:
+            msg += f"  test={len(test_ds)}"
+        print(msg)
 
     if 'stroke' in args.tasks:
         full = ISLESStrokeDataset(
@@ -147,13 +174,12 @@ def build_datasets(args):
             empty_ratio=args.stroke_empty_ratio,
             force_rebuild=args.rebuild_cache,
         )
-        n_train = int(0.8 * len(full))
-        train_ds, val_ds = tud.random_split(
-            full, [n_train, len(full) - n_train],
-            generator=torch.Generator().manual_seed(42)
-        )
-        splits['stroke'] = (train_ds, val_ds)
-        print(f"✓ Stroke — train={len(train_ds)}  val={len(val_ds)}")
+        train_ds, val_ds, test_ds = split_train_val_test(full)
+        splits['stroke'] = (train_ds, val_ds, test_ds)
+        msg = f"✓ Stroke — train={len(train_ds)}  val={len(val_ds)}"
+        if test_ds is not None:
+            msg += f"  test={len(test_ds)}"
+        print(msg)
 
     return splits
 
@@ -177,10 +203,10 @@ def main(args):
 
     # ── Pre-compute / load HDF5 features ────────────────────────
     print("\n── Feature extraction ───────────────────────────────────")
-    feature_splits = {}   # task → (train_feat_ds, val_feat_ds)
+    feature_splits = {}   # task → (train_feat_ds, val_feat_ds, test_feat_ds_or_None)
     feature_dim = None
 
-    for task, (train_ds, val_ds) in dataset_splits.items():
+    for task, (train_ds, val_ds, test_ds) in dataset_splits.items():
         train_feat = get_or_compute_features(
             train_ds, 'train', task, args.save_dir,
             args.bpe_path, device, args.feat_batch_size
@@ -189,7 +215,14 @@ def main(args):
             val_ds, 'val', task, args.save_dir,
             args.bpe_path, device, args.feat_batch_size
         )
-        feature_splits[task] = (train_feat, val_feat)
+        test_feat = None
+        if test_ds is not None:
+            test_feat = get_or_compute_features(
+                test_ds, 'test', task, args.save_dir,
+                args.bpe_path, device, args.feat_batch_size
+            )
+
+        feature_splits[task] = (train_feat, val_feat, test_feat)
 
         # All tasks share the same SAM3 feature dim
         if feature_dim is None:
@@ -199,13 +232,21 @@ def main(args):
 
     # ── DataLoaders ──────────────────────────────────────────────
     loaders = {}
-    for task, (train_feat, val_feat) in feature_splits.items():
+    test_loaders = {}
+    for task, (train_feat, val_feat, test_feat) in feature_splits.items():
         loaders[task] = (
             DataLoader(train_feat, batch_size=args.batch_size,
                        shuffle=True,  num_workers=4, pin_memory=True),
             DataLoader(val_feat,   batch_size=args.batch_size,
                        shuffle=False, num_workers=4, pin_memory=True),
         )
+        if test_feat is not None:
+            test_loaders[task] = DataLoader(
+                test_feat, batch_size=args.batch_size,
+                shuffle=False, num_workers=4, pin_memory=True
+            )
+        else:
+            test_loaders[task] = None
 
     # ── Class weights (for imbalanced tasks) ─────────────────────
     # Build once from full raw dataset (cheap; runs on cached .pt files)
@@ -243,6 +284,18 @@ def main(args):
             probes[task] = probe
             histories[task] = history
 
+            if test_loaders.get(task) is not None:
+                test_acc, test_iou, test_dice = evaluate_probe(
+                    test_loaders[task], probe, device
+                )
+                history['test_accuracy'] = test_acc
+                history['test_iou'] = test_iou
+                history['test_dice'] = test_dice
+                print(
+                    f"  {task} TEST: acc={test_acc:.4f}  "
+                    f"IoU={test_iou:.4f}  Dice={test_dice:.4f}"
+                )
+
             # Save individual probe
             save_path = os.path.join(args.save_dir, f'probe_{task}.pth')
             torch.save({
@@ -272,6 +325,25 @@ def main(args):
             'histories': histories,
         }, save_path)
         print(f"  ✓ Saved {save_path}")
+
+        # Optional held-out test evaluation (per task)
+        for task in args.tasks:
+            if test_loaders.get(task) is None:
+                continue
+
+            def _fwd(feats):
+                return probe(feats, task)
+
+            test_acc, test_iou, test_dice = evaluate_probe(
+                test_loaders[task], probe, device, forward_fn=_fwd
+            )
+            histories[task]['test_accuracy'] = test_acc
+            histories[task]['test_iou'] = test_iou
+            histories[task]['test_dice'] = test_dice
+            print(
+                f"  {task} TEST: acc={test_acc:.4f}  "
+                f"IoU={test_iou:.4f}  Dice={test_dice:.4f}"
+            )
 
     # ── Results ──────────────────────────────────────────────────
     print_comparison_table(histories)
@@ -315,6 +387,10 @@ def parse_args():
                    help='Fraction of empty (no-lesion) slices to keep for MS')
     p.add_argument('--stroke_empty_ratio', type=float, default=0.3,
                    help='Fraction of empty slices to keep for Stroke')
+    p.add_argument('--val_ratio', type=float, default=0.2,
+                   help='Validation split ratio (0-1)')
+    p.add_argument('--test_ratio', type=float, default=0.0,
+                   help='Held-out test split ratio (0-1); 0 disables test split')
 
     # Paths
     p.add_argument('--bpe_path',  type=str, required=True)

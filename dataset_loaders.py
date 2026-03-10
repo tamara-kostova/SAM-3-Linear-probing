@@ -67,10 +67,23 @@ def to_mask_tensor(mask_2d, img_size):
 
 def find_file(directory, patterns):
     """Return the first file in `directory` matching any glob pattern."""
+    if not os.path.isdir(directory):
+        return None
+
     for pattern in patterns:
         matches = sorted(glob.glob(os.path.join(directory, pattern)))
-        if matches:
-            return matches[0]
+        for m in matches:
+            # Some archives unpack as "<name>.nii/<inner>.nii".
+            # Prefer a real file; if a directory matches, look inside it.
+            if os.path.isfile(m):
+                return m
+            if os.path.isdir(m):
+                nested = sorted(
+                    glob.glob(os.path.join(m, '*.nii')) +
+                    glob.glob(os.path.join(m, '*.nii.gz'))
+                )
+                if nested:
+                    return nested[0]
     return None
 
 
@@ -305,7 +318,7 @@ class ISLESStrokeDataset(Dataset):
         patterns = self._IMG_PATTERNS.get(modality, self._IMG_PATTERNS['dwi'])
         pairs = []
 
-        # --- Layout A: official ISLES 2022 BIDS ---
+        # --- Layout A: official ISLES 2022 BIDS with rawdata/derivatives ---
         rawdata_root = os.path.join(data_root, 'rawdata')
         deriv_root   = os.path.join(data_root, 'derivatives')
 
@@ -325,6 +338,26 @@ class ISLESStrokeDataset(Dataset):
                                 find_file(ses_dir,  patterns))
 
                     # Find mask in derivatives
+                    deriv_ses = os.path.join(deriv_root, sub, ses)
+                    mask_path = find_file(deriv_ses, self._MASK_PATTERNS)
+
+                    if img_path and mask_path:
+                        pairs.append((img_path, mask_path, f"{sub}_{ses}"))
+
+        # --- Layout A2: BIDS-like root/sub-*/ses-* + derivatives ---
+        # Common local layout: data_root/sub-*/ses-*/{dwi,anat}
+        if not pairs:
+            for sub_dir in sorted(glob.glob(os.path.join(data_root, 'sub-*'))):
+                sub = os.path.basename(sub_dir)
+                for ses_dir in sorted(glob.glob(os.path.join(sub_dir, 'ses-*'))):
+                    ses = os.path.basename(ses_dir)
+                    dwi_dir = os.path.join(ses_dir, 'dwi')
+                    anat_dir = os.path.join(ses_dir, 'anat')
+
+                    img_path = (find_file(dwi_dir,  patterns) or
+                                find_file(anat_dir, patterns) or
+                                find_file(ses_dir,  patterns))
+
                     deriv_ses = os.path.join(deriv_root, sub, ses)
                     mask_path = find_file(deriv_ses, self._MASK_PATTERNS)
 
@@ -389,3 +422,23 @@ class ISLESStrokeDataset(Dataset):
     def __getitem__(self, idx):
         d = torch.load(self.cache_paths[idx], weights_only=False)
         return d['image'], d['mask']
+    
+    def compute_class_weights(self):
+        """
+        Scan cache to compute pixel-level class weights.
+        Useful for weighted CrossEntropyLoss to handle infarct/background imbalance.
+        Returns a 2-element tensor [w_background, w_infarct].
+        """
+        counts = np.zeros(2, dtype=np.int64)
+        for p in tqdm(self.cache_paths, desc='Computing class weights'):
+            d = torch.load(p, weights_only=False)
+            mask = d['mask'].numpy()
+            counts[0] += (mask == 0).sum()
+            counts[1] += (mask == 1).sum()
+
+        total = counts.sum()
+        weights = total / (2.0 * np.maximum(counts, 1))
+
+        print(f"  Background pixels: {counts[0]:,}  weight={weights[0]:.2f}")
+        print(f"  Infarct pixels:    {counts[1]:,}  weight={weights[1]:.2f}")
+        return torch.tensor(weights, dtype=torch.float32)
