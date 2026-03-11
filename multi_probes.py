@@ -210,13 +210,31 @@ def train_separate_probe(
         probe.train()
         epoch_loss = 0.0
 
-        for features, masks in tqdm(train_loader,
-                                    desc=f"[{task_name}] Epoch {epoch+1}/{num_epochs}"):
+        for batch_idx, (features, masks) in enumerate(tqdm(train_loader,
+                                    desc=f"[{task_name}] Epoch {epoch+1}/{num_epochs}")):
             features, masks = features.to(device), masks.to(device)
+            
             optimizer.zero_grad()
 
             with autocast():
                 logits = probe(features)
+                if epoch == 0 and batch_idx == 0:
+                    mask_exp = masks.unsqueeze(1).expand_as(features)
+                    fg = features[mask_exp == 1]
+                    bg = features[mask_exp == 0]
+
+                    print(f"\n[{task_name}] SAM3 feature diagnostic:")
+
+                    if fg.numel() > 0:
+                        print(f"  Lesion mean activation : {fg.mean():.4f}")
+                        print(f"  BG mean activation     : {bg.mean():.4f}")
+                        ratio = fg.mean() / (bg.mean() + 1e-8)
+                        print(f"  Ratio fg/bg            : {ratio.item():.4f}")
+                    else:
+                        print("  ⚠ No lesion pixels in batch")
+
+                    preds_positive = (logits.argmax(dim=1) == 1).float().mean()
+                    print(f"  Fraction of positive predictions: {preds_positive:.4f}")
                 if logits.shape[-2:] != masks.shape[-2:]:
                     logits = torch.nn.functional.interpolate(
                         logits, size=masks.shape[-2:],
@@ -399,6 +417,9 @@ def evaluate_probe(data_loader, probe, device, forward_fn=None):
     """
     probe.eval()
     tp = fp = tn = fn = 0
+    total_pred_pos = 0
+    total_gt_pos = 0
+    total_pixels = 0
 
     with torch.no_grad():
         for features, masks in tqdm(data_loader, desc='  Evaluating', leave=False):
@@ -422,11 +443,16 @@ def evaluate_probe(data_loader, probe, device, forward_fn=None):
             fn += (~preds_fg & masks_fg).sum().item()
             tn += (~preds_fg & ~masks_fg).sum().item()
 
+            total_pred_pos += preds_fg.sum().item()    
+            total_gt_pos   += masks_fg.sum().item()    
+            total_pixels   += masks.numel()    
+
     total    = tp + fp + fn + tn
     accuracy = (tp + tn) / max(total, 1)
     iou      = tp / max(tp + fp + fn, 1)
     dice     = 2 * tp / max(2 * tp + fp + fn, 1)
-
+    print(f"  Predicted positive: {100*total_pred_pos/total_pixels:.2f}%  "
+          f"| GT positive: {100*total_gt_pos/total_pixels:.2f}%")
     return accuracy, iou, dice
 
 
