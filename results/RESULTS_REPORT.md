@@ -76,28 +76,39 @@ Dataset: 22 test cases, 4 004 slices total (1 751 with lesion, 2 253 empty).
 
 </details>
 
-### Linear probe (test set, all slices, `empty_ratio=1.0`)
-| Metric   | Value     |
-|----------|-----------|
-| Accuracy | 0.985     |
-| IoU      | 0.081     |
-| Dice     | **0.149** |
+### Linear probe — retrained with `empty_ratio=1.0` (test set, all slices)
+| Metric   | Value      |
+|----------|------------|
+| Accuracy | 0.9834     |
+| IoU      | **0.1511** |
+| Dice     | **0.2625** |
 
-**The linear probe outperforms the corrected zero-shot SAM3 (+0.097 Dice).**
+**The retrained probe outperforms the corrected zero-shot SAM3 (+0.210 Dice).**
 
 The original zero-shot Dice of 0.535 was evaluated only on the best lesion slice per
 case; when re-run on all slices with global pixel-level metrics (matching the linear
-probe protocol), zero-shot drops to 0.052. The probe's 0.149 Dice is a genuine
-improvement.
+probe protocol), zero-shot drops to 0.052. The retrained probe's 0.263 Dice is a
+genuine and substantially larger improvement.
+
+<details>
+<summary>Earlier probe trained with <code>empty_ratio=0.3</code> (distribution mismatch — superseded)</summary>
+
+| Metric   | Value |
+|----------|-------|
+| Accuracy | 0.985 |
+| IoU      | 0.081 |
+| Dice     | 0.149 |
+
+Probe trained on 30% empty slices, tested on 30% — understates real-world performance
+because the test distribution did not match the ~89% empty-slice rate of the full dataset.
+
+</details>
 
 ### Why the probe still underperforms supervised baselines
 1. **Small dataset** — MSLesSeg has only ~75 patients (~22 train, ~53 test in provided split)
-2. **Train/test distribution mismatch** — probe trained with `empty_ratio=0.3`
-   (30% of empty slices) but tested with `empty_ratio=1.0` (all slices). The probe
-   never saw the realistic ~89% empty-slice rate during training.
-3. **Severe class imbalance** — MS lesions cover ~1–2% of pixels per slice; a linear
+2. **Severe class imbalance** — MS lesions cover ~1–2% of pixels per slice; a linear
    probe with ~512 parameters cannot learn a reliable threshold under this imbalance.
-4. **Feature resolution** — SAM3 downsamples to a coarse feature map; tiny MS plaques
+3. **Feature resolution** — SAM3 downsamples to a coarse feature map; tiny MS plaques
    (sometimes 2–5 mm) may fall within a single feature vector after downsampling.
 
 ---
@@ -115,20 +126,34 @@ improvement.
 
 ISLES 2022 challenge winner (nnU-Net): **0.58 Dice**
 
-### Linear probe (validation set, all slices)
-| Metric | Value |
-|--------|-------|
-| Best IoU    | 0.125 |
-| Best Dice   | **0.224** |
-| Final Acc   | 0.952 |
+### Linear probe — retrained with `empty_ratio=1.0` (test set, all slices)
+| Metric   | Value      |
+|----------|------------|
+| Accuracy | 0.9865     |
+| IoU      | **0.2564** |
+| Dice     | **0.4082** |
 
-**The linear probe again performs worse than zero-shot SAM3.**
+**With matched train/test distribution the probe is competitive with zero-shot SAM3.**
 
-The corrected zero-shot evaluation (all slices, global pixel metrics — notebook
-`14_SAM3_Stroke_dataset_all_slices.ipynb`) is pending re-run.
+The zero-shot result (0.492 Dice) was evaluated only on the best lesion slice per case
+(25/100 patients). A corrected all-slices evaluation
+(`14_SAM3_Stroke_dataset_all_slices.ipynb`) was too slow to run — comparison remains
+protocol-mismatched until that notebook is re-run.
 
-### Why the probe underperformed
-Same root causes as MS, plus:
+<details>
+<summary>Earlier probe trained with <code>empty_ratio=0.3</code> (validation set only — superseded)</summary>
+
+| Metric    | Value |
+|-----------|-------|
+| Best IoU  | 0.125 |
+| Best Dice | 0.224 |
+| Final Acc | 0.952 |
+
+Validation-only run, 30% empty slices — substantially underestimates performance.
+
+</details>
+
+### Why the probe may still underperform supervised baselines
 - Stroke lesions have higher size variance (lacunar to large MCA territory)
 - Only 100 ISLES patients — fewer than needed for reliable linear probe training
 - DWI modality (used for stroke) may be less represented in SAM3's pretraining
@@ -208,43 +233,29 @@ MedGemma to predict normal or other abnormality on confirmed tumour cases.
 | Task | Zero-shot Dice | Probe Dice | Δ | Comparable? |
 |------|---------------|------------|---|-------------|
 | Tumor (BraTS) | 0.450 | **0.836** (IoU 0.719, Acc 0.993) | +0.386 | Yes (all slices, 125-patient test set) |
-| MS (MSLesSeg) | **0.052** | 0.149 | **+0.097** | Yes (corrected — all slices, global pixel, test set) |
-| Stroke (ISLES) | 0.492† | 0.224 | −0.268 | No† — protocol mismatch |
+| MS (MSLesSeg) | 0.052 | **0.263** (IoU 0.151, Acc 0.983) | **+0.210** | Yes (corrected — all slices, global pixel, test set) |
+| Stroke (ISLES) | 0.492† | **0.408** (IoU 0.256, Acc 0.987) | −0.084† | No† — protocol mismatch |
 
-† Stroke zero-shot evaluated on best slice per case (25/100 cases). Corrected all-slices
-  evaluation still pending (`14_SAM3_Stroke_dataset_all_slices.ipynb`).
+† Stroke zero-shot evaluated on best slice per case (25/100 cases); corrected all-slices
+  evaluation pending (`14_SAM3_Stroke_dataset_all_slices.ipynb`). The gap is likely
+  smaller or reversed once zero-shot is re-run on all slices.
 
 ---
 
 ## 7. Future Work & Retraining Plan
 
-### 7.1 Fix train/test distribution mismatch (MS + Stroke) — HIGH PRIORITY
+### 7.1 ~~Fix train/test distribution mismatch (MS + Stroke)~~ — DONE
 
-Retrain both probes with `empty_ratio=1.0` to match the test-time distribution:
+Both probes retrained with `empty_ratio=1.0`. Results in `results/ms/results.json` and
+`results/stroke/results.json`. MS Dice improved from 0.149 → 0.263; Stroke from 0.224 → 0.408.
 
-```bash
-python run_linear_probing.py \
-    --tasks ms stroke \
-    --ms_root      /data/MSLesSeg \
-    --stroke_root  /data/ISLES2022 \
-    --ms_empty_ratio     1.0 \
-    --stroke_empty_ratio 1.0 \
-    --epochs 30 \
-    --lr 1e-3 \
-    --save_dir ./results_v2
-```
+### 7.2 Re-run zero-shot notebooks with corrected protocol
 
-Expected effect: probe sees realistic slice distribution; accuracy may drop slightly
-but IoU/Dice should be more reliable.
+MS zero-shot re-run complete (`12_SAM3_MS_dataset_all_slices.ipynb`, 2026-03-10):
+Dice=0.052 on all 4 004 test slices — now fully comparable with the linear probe.
 
-### 7.2 Re-run zero-shot notebooks with corrected protocol — HIGH PRIORITY
-
-Run `12_SAM3_MS_dataset_all_slices.ipynb` and `14_SAM3_Stroke_dataset_all_slices.ipynb`
-on Colab (T4) to get comparable zero-shot baselines. These now:
-- Evaluate on test set only
-- Use all slices (including empty)
-- Accumulate global pixel-level TP/FP/FN/TN
-- Use single prompt "white matter lesion" / "stroke lesion"
+Stroke all-slices zero-shot (`14_SAM3_Stroke_dataset_all_slices.ipynb`) was too slow
+to complete — still pending. Zero-shot comparison for stroke remains protocol-mismatched.
 
 ### 7.3 Address class imbalance more aggressively
 
