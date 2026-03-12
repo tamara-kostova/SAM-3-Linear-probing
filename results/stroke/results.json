@@ -1,0 +1,12 @@
+{
+  "stroke": {
+    "task": "stroke",
+    "best_iou": 0.2895,
+    "best_dice": 0.449,
+    "final_acc": 0.9869,
+    "test_accuracy": 0.9865,
+    "test_iou": 0.2564,
+    "test_dice": 0.4082,
+    "empty_ratio": 1.0
+  }
+}
