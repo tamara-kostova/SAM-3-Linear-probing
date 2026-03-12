@@ -3,5 +3,6 @@
   "checkpoint": "./results/probe_ms.pth",
   "accuracy": 0.9849444627891163,
   "iou": 0.08060536887494008,
-  "dice": 0.14918557911453176
+  "dice": 0.14918557911453176,
+  "empty_ratio": 0.3
 }

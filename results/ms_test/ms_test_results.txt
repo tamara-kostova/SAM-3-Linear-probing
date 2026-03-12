@@ -4,3 +4,4 @@ checkpoint=./results/probe_ms.pth
 accuracy=0.984944
 iou=0.080605
 dice=0.149186
+empty_ratio= 0.3

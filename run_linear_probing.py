@@ -352,6 +352,19 @@ def main(args):
         save_path=os.path.join(args.save_dir, 'all_results.png')
     )
 
+    import json
+    from datetime import datetime
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    tasks_str = '_'.join(args.tasks)
+    results_path = os.path.join(args.save_dir, f'results_{tasks_str}_{ts}.json')
+    empty_ratio_map = {'ms': args.ms_empty_ratio, 'stroke': args.stroke_empty_ratio}
+    for task, history in histories.items():
+        if task in empty_ratio_map:
+            history['empty_ratio'] = empty_ratio_map[task]
+    with open(results_path, 'w') as f:
+        json.dump(histories, f, indent=2)
+    print(f"✓ Results saved to {results_path}")
+
 
 # ─────────────────────────────────────────────────────────────────
 # CLI
@@ -383,13 +396,13 @@ def parse_args():
                    choices=['dwi', 'adc', 'flair'])
 
     # Dataset tuning
-    p.add_argument('--ms_empty_ratio',     type=float, default=0.3,
+    p.add_argument('--ms_empty_ratio',     type=float, default=1.0,
                    help='Fraction of empty (no-lesion) slices to keep for MS')
-    p.add_argument('--stroke_empty_ratio', type=float, default=0.3,
+    p.add_argument('--stroke_empty_ratio', type=float, default=1.0,
                    help='Fraction of empty slices to keep for Stroke')
-    p.add_argument('--val_ratio', type=float, default=0.2,
+    p.add_argument('--val_ratio', type=float, default=0.15,
                    help='Validation split ratio (0-1)')
-    p.add_argument('--test_ratio', type=float, default=0.0,
+    p.add_argument('--test_ratio', type=float, default=0.15,
                    help='Held-out test split ratio (0-1); 0 disables test split')
 
     # Paths

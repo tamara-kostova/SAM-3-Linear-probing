@@ -1,1 +1,2 @@
 Best IOU 0.1251 BEST DICE 0.224 Final Acc 0.9524
+empty_ratio=0.3
