@@ -13,6 +13,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from statsmodels.stats.contingency_tables import mcnemar
 
 STANDALONE  = "results/phases/standalone_summary_results.jsonl"
 SAM3        = "results/sam3_summary_results.jsonl"
@@ -53,6 +54,12 @@ def avg_floats(vals):
 def acc_str(c, t):
     return f"{c}/{t} = {pct(c,t):.1f}%" if t else "N/A"
 
+def norm_path(p):
+    for prefix in ("data/raw data/", "data/"):
+        if str(p or "").startswith(prefix):
+            return str(p)[len(prefix):]
+    return str(p or "")
+
 # ── tee: write to stdout AND collect for file ─────────────────────────────────
 
 _lines = []
@@ -79,17 +86,98 @@ def field_accuracy(records, gt_path, pred_path):
     total_t = sum(v[1] for v in by_val.values())
     return total_c, total_t, dict(by_val)
 
-# ── PART 1: Standalone MedGemma ───────────────────────────────────────────────
+def run_mcnemar(sa_records_by_path, s3_records_by_path, gt_path, pred_path):
+    """
+    For each image present in both result sets, compute whether standalone
+    and pipeline were correct, then run McNemar's test.
 
-records = [r for r in load_jsonl(STANDALONE)
-           if (r.get("input", {}).get("metadata", {}).get("dataset") or "").lower()
-              in TUMOR_DATASETS]
+    Returns dict with keys: both_correct, only_standalone, only_pipeline,
+    both_wrong, n, statistic, pvalue.
+    Returns None if fewer than 2 discordant pairs exist.
+    """
+    both_correct    = 0
+    only_standalone = 0
+    only_pipeline   = 0
+    both_wrong      = 0
+
+    shared_paths = set(sa_records_by_path) & set(s3_records_by_path)
+    for path in shared_paths:
+        sa_r = sa_records_by_path[path]
+        s3_r = s3_records_by_path[path]
+
+        gt_sa = get(sa_r, gt_path)
+        gt_s3 = get(s3_r, gt_path)
+        # Use standalone gt as ground truth (same image, same label);
+        # skip if gt is missing in either record
+        gt = gt_sa if gt_sa is not None else gt_s3
+        if gt is None:
+            continue
+        gt = str(gt).lower()
+
+        sa_pred = get(sa_r, pred_path)
+        s3_pred = get(s3_r, pred_path)
+        sa_ok = sa_pred is not None and str(sa_pred).lower() == gt
+        s3_ok = s3_pred is not None and str(s3_pred).lower() == gt
+
+        if sa_ok and s3_ok:
+            both_correct += 1
+        elif sa_ok and not s3_ok:
+            only_standalone += 1
+        elif not sa_ok and s3_ok:
+            only_pipeline += 1
+        else:
+            both_wrong += 1
+
+    n = both_correct + only_standalone + only_pipeline + both_wrong
+    discordant = only_standalone + only_pipeline
+    if discordant < 2:
+        return {"n": n, "both_correct": both_correct,
+                "only_standalone": only_standalone,
+                "only_pipeline": only_pipeline,
+                "both_wrong": both_wrong,
+                "statistic": None, "pvalue": None,
+                "note": "too few discordant pairs"}
+
+    table = [[both_correct, only_standalone],
+             [only_pipeline, both_wrong]]
+    result = mcnemar(table, exact=False, correction=True)
+    return {
+        "n": n,
+        "both_correct": both_correct,
+        "only_standalone": only_standalone,
+        "only_pipeline": only_pipeline,
+        "both_wrong": both_wrong,
+        "statistic": result.statistic,
+        "pvalue": result.pvalue,
+    }
+
+# ── load SAM3 first; build path set for filtering ────────────────────────────
+
+raw_sam3 = [r for r in load_jsonl(SAM3) if r.get("mode") == "sam3_bbox"]
+sam3_paths = {norm_path(r.get("image_path", "")) for r in raw_sam3}
+
+pr(f"SAM3 bbox records        : {len(raw_sam3)}")
+pr(f"Unique SAM3 image paths  : {len(sam3_paths)}")
+
+# ── load standalone; filter to SAM3 image set ────────────────────────────────
+
+all_standalone = [r for r in load_jsonl(STANDALONE)
+                  if (r.get("input", {}).get("metadata", {}).get("dataset") or "").lower()
+                     in TUMOR_DATASETS]
+
+records = [r for r in all_standalone
+           if norm_path(get(r, "input.image_path") or "") in sam3_paths]
+
+pr(f"Standalone (all datasets): {len(all_standalone)}")
+pr(f"Standalone (SAM3-matched): {len(records)}  <- used for all comparisons below")
+
+# ── PART 1: Standalone MedGemma ───────────────────────────────────────────────
 
 pr("\n" + "="*60)
 pr("  STANDALONE MEDGEMMA — Accuracy per field")
 pr("="*60)
 
-field_results = {}   # field -> (total_c, total_t, by_val)
+field_results = {}
 for field, gt_path, pred_path in FIELDS:
     tc, tt, by_val = field_accuracy(records, gt_path, pred_path)
     field_results[field] = (tc, tt, by_val)
@@ -104,7 +192,7 @@ pr("\n" + "="*60)
 pr("  STANDALONE MEDGEMMA — Score distributions")
 pr("="*60)
 
-score_data = {}   # sk -> {"overall": (avg, n), "by_dx": {dx: (avg, n)}}
+score_data = {}
 for sk in SCORE_KEYS:
     overall_vals = [get(r, f"output.parsed_response.{sk}") for r in records]
     ov_avg, ov_n = avg_floats(overall_vals)
@@ -124,22 +212,13 @@ for sk in SCORE_KEYS:
 
 # ── PART 2: SAM3 + MedGemma accuracy ─────────────────────────────────────────
 
-sam3 = [r for r in load_jsonl(SAM3) if r.get("mode") == "sam3_bbox"]
-
-# Build path lookup from standalone so we can fill in gt modality/plane/sequence
-def norm_path(p):
-    for prefix in ("data/raw data/", "data/"):
-        if str(p or "").startswith(prefix):
-            return str(p)[len(prefix):]
-    return str(p or "")
-
+# Build meta lookup from the filtered standalone set
 _meta_lookup = {}
 for r in records:
     ip = get(r, "input.image_path") or ""
     meta = get(r, "input.metadata") or {}
     _meta_lookup[norm_path(ip)] = meta
 
-# Normalize each SAM3 record to the same nested structure field_accuracy expects
 def norm_sam3(r):
     pred = r.get("prediction") or {}
     gt_label = r.get("gt_label") or "normal"
@@ -147,6 +226,7 @@ def norm_sam3(r):
     gt_sub    = None if gt_label == "normal" else gt_label
     meta = _meta_lookup.get(norm_path(r.get("image_path", "")), {})
     return {
+        "_image_path": norm_path(r.get("image_path", "")),   # kept for McNemar lookup
         "input": {"metadata": {
             "class":            gt_class,
             "subclass":         gt_sub,
@@ -166,7 +246,7 @@ def norm_sam3(r):
         }},
     }
 
-sam3_norm = [norm_sam3(r) for r in sam3]
+sam3_norm = [norm_sam3(r) for r in raw_sam3]
 
 pr("\n" + "="*60)
 pr("  SAM3 + MEDGEMMA — Accuracy per field")
@@ -205,20 +285,48 @@ for sk in SCORE_KEYS:
         a, n = by_dx_avg[dx]
         pr(f"    {dx:<30} {f'{a:.3f} (n={n})' if a else 'N/A'}")
 
-# ── PART 3: SAM3 influence ────────────────────────────────────────────────────
+# ── PART 3: McNemar's test — paired per-image comparison ─────────────────────
+
+# Build path-keyed dicts for aligned lookup
+sa_by_path = {norm_path(get(r, "input.image_path") or ""): r for r in records}
+s3_by_path = {r["_image_path"]: r for r in sam3_norm}
+
+pr("\n" + "="*60)
+pr("  McNEMAR'S TEST — Standalone vs SAM3+MedGemma (paired)")
+pr("="*60)
+pr(f"  Shared images available for pairing: "
+   f"{len(set(sa_by_path) & set(s3_by_path))}")
+
+mcnemar_results = {}
+for field, gt_path, pred_path in FIELDS:
+    res = run_mcnemar(sa_by_path, s3_by_path, gt_path, pred_path)
+    mcnemar_results[field] = res
+    pr(f"\n[{field}]  n={res['n']}")
+    pr(f"    Both correct      : {res['both_correct']}")
+    pr(f"    Only standalone   : {res['only_standalone']}  (SAM3 hurt)")
+    pr(f"    Only pipeline     : {res['only_pipeline']}  (SAM3 helped)")
+    pr(f"    Both wrong        : {res['both_wrong']}")
+    if res["pvalue"] is not None:
+        sig = "***" if res["pvalue"] < 0.001 else ("**" if res["pvalue"] < 0.01 else
+              ("*" if res["pvalue"] < 0.05 else "ns"))
+        pr(f"    McNemar chi2={res['statistic']:.3f}, p={res['pvalue']:.4e}  {sig}")
+    else:
+        pr(f"    {res.get('note', 'N/A')}")
+
+# ── PART 4: SAM3 influence ────────────────────────────────────────────────────
 
 def is_tumor(r):  return r.get("gt_label", "normal") != "normal"
 def pred_cls(r):   return (r.get("prediction") or {}).get("diagnosis_name", "")
 
-tumor_imgs  = [r for r in sam3 if is_tumor(r)]
-normal_imgs = [r for r in sam3 if not is_tumor(r)]
-no_tumor    = [r for r in tumor_imgs if r.get("tumor_fraction", 1) < TUMOR_THRESH]
-missed      = [r for r in no_tumor   if pred_cls(r) != "tumor"]
+tumor_imgs  = [r for r in raw_sam3 if is_tumor(r)]
+normal_imgs = [r for r in raw_sam3 if not is_tumor(r)]
+no_tumor    = [r for r in tumor_imgs  if r.get("tumor_fraction", 1) < TUMOR_THRESH]
+missed      = [r for r in no_tumor    if pred_cls(r) != "tumor"]
 fp_seg      = [r for r in normal_imgs if r.get("tumor_fraction", 0) >= TUMOR_THRESH]
-false_pos   = [r for r in fp_seg     if pred_cls(r) == "tumor"]
+false_pos   = [r for r in fp_seg      if pred_cls(r) == "tumor"]
 
 pr("\n" + "="*60)
-pr("  SAM3 — Tumor images where SAM3 missed tumor → wrong pred")
+pr("  SAM3 — Tumor images where SAM3 missed tumor -> wrong pred")
 pr("="*60)
 pr(f"  Count: {len(missed)}")
 for r in missed:
@@ -226,7 +334,7 @@ for r in missed:
        f"fraction={r.get('tumor_fraction',0):.5f}  {r['image_path']}")
 
 pr("\n" + "="*60)
-pr("  SAM3 — Normal images where SAM3 found tumor → pred=tumor")
+pr("  SAM3 — Normal images where SAM3 found tumor -> pred=tumor")
 pr("="*60)
 pr(f"  Count: {len(false_pos)}")
 for r in false_pos:
@@ -236,17 +344,17 @@ for r in false_pos:
 pr("\n" + "="*60)
 pr("  SAM3 — Summary")
 pr("="*60)
-pr(f"  sam3_bbox records total : {len(sam3)}")
+pr(f"  sam3_bbox records total : {len(raw_sam3)}")
 pr(f"  Tumor images            : {len(tumor_imgs)}")
 pr(f"    SAM3 missed tumor     : {len(no_tumor)}")
-pr(f"    → also mis-classified : {len(missed)}")
+pr(f"    -> also mis-classified : {len(missed)}")
 pr(f"  Normal images           : {len(normal_imgs)}")
 pr(f"    SAM3 found tumor pxls : {len(fp_seg)}")
-pr(f"    → also pred as tumor  : {len(false_pos)}")
+pr(f"    -> also pred as tumor  : {len(false_pos)}")
 
 # ── Save text report ──────────────────────────────────────────────────────────
 
-with open(OUT_TXT, "w") as f:
+with open(OUT_TXT, "w", encoding="utf-8") as f:
     f.write("\n".join(_lines))
 print(f"\n[saved] {OUT_TXT}")
 
@@ -259,7 +367,6 @@ GREEN  = "#55A868"
 RED    = "#C44E52"
 ORANGE = "#DD8452"
 GRAY   = "#8C8C8C"
-COLORS = [BLUE, GREEN, ORANGE, RED, "#9172B0", "#64B5CD", "#CCB974"]
 
 def save(fig, name):
     p = os.path.join(OUT_PLOTS, name)
@@ -325,8 +432,7 @@ save(fig, "03_diagnosis_detailed_per_class.png")
 
 # ── Plot 4: Score averages by predicted diagnosis_name ───────────────────────
 
-all_dx = sorted({dx for sk in SCORE_KEYS
-                    for dx in score_data[sk]["by_dx"]})
+all_dx = sorted({dx for sk in SCORE_KEYS for dx in score_data[sk]["by_dx"]})
 x = np.arange(len(all_dx))
 width = 0.25
 
@@ -365,7 +471,6 @@ save(fig, "05_specialized_sequence_accuracy.png")
 # ── Plot 6: SAM3 influence summary ───────────────────────────────────────────
 
 fig, ax = plt.subplots(figsize=(8, 4.5))
-
 categories = ["Tumor images\n(SAM3 missed)", "Normal images\n(SAM3 false seg)"]
 total_bars = [len(no_tumor),  len(fp_seg)]
 wrong_bars = [len(missed),    len(false_pos)]
@@ -373,14 +478,13 @@ wrong_bars = [len(missed),    len(false_pos)]
 x = np.arange(len(categories))
 w = 0.35
 b1 = ax.bar(x - w/2, total_bars, w, label="SAM3 segmentation error",  color=ORANGE, edgecolor="white")
-b2 = ax.bar(x + w/2, wrong_bars, w, label="→ also MedGemma wrong",    color=RED,    edgecolor="white")
+b2 = ax.bar(x + w/2, wrong_bars, w, label="-> also MedGemma wrong",   color=RED,    edgecolor="white")
 
 for bar in list(b1) + list(b2):
     h = bar.get_height()
     ax.text(bar.get_x() + bar.get_width()/2, h + 3, str(h),
             ha="center", va="bottom", fontsize=10, fontweight="bold")
 
-# reference totals as dashed lines
 ax.axhline(len(tumor_imgs),  color=BLUE,  linestyle="--", linewidth=1,
            label=f"Total tumor images ({len(tumor_imgs)})",  alpha=0.7, xmin=0.02, xmax=0.48)
 ax.axhline(len(normal_imgs), color=GREEN, linestyle="--", linewidth=1,
@@ -394,15 +498,15 @@ ax.legend(fontsize=8.5, loc="upper right")
 ax.spines[["top", "right"]].set_visible(False)
 save(fig, "06_sam3_influence.png")
 
-# ── Plot 7: tumor_fraction distribution for SAM3 false positives (normal→tumor) ──
+# ── Plot 7: tumor_fraction distribution for SAM3 false positives ─────────────
 
 fracs_fp = [r.get("tumor_fraction", 0) for r in false_pos]
 fracs_ok = [r.get("tumor_fraction", 0) for r in normal_imgs if pred_cls(r) != "tumor"]
 
 fig, ax = plt.subplots(figsize=(8, 4))
 bins = np.linspace(0, max(fracs_fp + fracs_ok + [0.001]), 30)
-ax.hist(fracs_ok, bins=bins, color=GREEN, alpha=0.6, label="Normal → correctly normal")
-ax.hist(fracs_fp, bins=bins, color=RED,   alpha=0.8, label="Normal → wrongly predicted tumor")
+ax.hist(fracs_ok, bins=bins, color=GREEN, alpha=0.6, label="Normal -> correctly normal")
+ax.hist(fracs_fp, bins=bins, color=RED,   alpha=0.8, label="Normal -> wrongly predicted tumor")
 ax.set_xlabel("tumor_fraction (SAM3)")
 ax.set_ylabel("Count")
 ax.set_title("SAM3 tumor fraction: normal images — correct vs false-positive predictions")
@@ -410,7 +514,7 @@ ax.legend(fontsize=9)
 ax.spines[["top", "right"]].set_visible(False)
 save(fig, "07_sam3_fp_fraction_dist.png")
 
-# ── Plot 8: Standalone vs SAM3 — overall accuracy per field (side-by-side) ───
+# ── Plot 8: Standalone vs SAM3 — overall accuracy per field ──────────────────
 
 fig, ax = plt.subplots(figsize=(9, 5))
 field_labels = [f for f, *_ in FIELDS]
@@ -424,11 +528,22 @@ b2 = ax.bar(x + w/2, s3_vals, w, label="SAM3 + MedGemma",     color=ORANGE, edge
 for bar, v in [(b, v) for bars, vals in [(b1, sa_vals), (b2, s3_vals)] for b, v in zip(bars, vals)]:
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
             f"{v:.1f}%", ha="center", va="bottom", fontsize=8)
+
+# Significance stars from McNemar's test above each pair
+for i, field in enumerate(field_labels):
+    res = mcnemar_results.get(field, {})
+    p = res.get("pvalue")
+    if p is not None:
+        stars = "***" if p < 0.001 else ("**" if p < 0.01 else ("*" if p < 0.05 else "ns"))
+        top = max(sa_vals[i], s3_vals[i]) + 4
+        ax.text(i, top, stars, ha="center", va="bottom", fontsize=9, color="black")
+
 ax.set_xticks(x)
 ax.set_xticklabels(field_labels, rotation=15, ha="right", fontsize=9)
 ax.set_ylabel("Accuracy (%)")
 ax.set_ylim(0, 115)
-ax.set_title("Standalone MedGemma vs SAM3 + MedGemma — accuracy per field")
+ax.set_title("Standalone MedGemma vs SAM3 + MedGemma — accuracy per field\n"
+             "(significance stars from McNemar's test)")
 ax.axhline(50, color=GRAY, linestyle="--", linewidth=0.8, alpha=0.5)
 ax.legend(fontsize=9)
 ax.spines[["top", "right"]].set_visible(False)
@@ -456,7 +571,7 @@ ax.set_xticklabels(all_classes, rotation=20, ha="right", fontsize=9)
 ax.set_ylabel("Accuracy (%)")
 ax.set_ylim(0, 115)
 ax.set_title("diagnosis_name — Standalone vs SAM3 + MedGemma")
-ax.axhline(50, color=GRAY, linestyle="--", linewidth=0.8, alpha=0.5)
+ax.axhline(50, color=GRAY, linestyle="--", linewidth=0.8, alpha=0.6)
 ax.legend(fontsize=9)
 ax.spines[["top", "right"]].set_visible(False)
 save(fig, "09_diagnosis_name_standalone_vs_sam3.png")

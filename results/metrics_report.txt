@@ -1,97 +1,100 @@
+SAM3 bbox records        : 12024
+Unique SAM3 image paths  : 12024
+Standalone (all datasets): 14957
+Standalone (SAM3-matched): 13390  <- used for all comparisons below
 
 ============================================================
   STANDALONE MEDGEMMA — Accuracy per field
 ============================================================
 
-[modality]  overall: 13521/14957 = 90.4%
-    mri                            13521/14957 = 90.4%
+[modality]  overall: 12114/13390 = 90.5%
+    mri                            12114/13390 = 90.5%
 
-[specialized_sequence]  overall: 2971/11957 = 24.8%
-    t1                             422/2942 = 14.3%
-    t1c+                           1777/6378 = 27.9%
-    t2                             772/2637 = 29.3%
+[specialized_sequence]  overall: 2550/10393 = 24.5%
+    t1                             340/2439 = 13.9%
+    t1c+                           1548/5706 = 27.1%
+    t2                             662/2248 = 29.4%
 
-[plane]  overall: 1813/7416 = 24.4%
-    axial                          1813/7416 = 24.4%
+[plane]  overall: 1653/5852 = 28.2%
+    axial                          1653/5852 = 28.2%
 
-[diagnosis_name]  overall: 12079/14957 = 80.8%
-    normal                         1735/2585 = 67.1%
-    other abnormalities            17/257 = 6.6%
-    tumor                          10327/12115 = 85.2%
+[diagnosis_name]  overall: 10927/13390 = 81.6%
+    normal                         1735/2584 = 67.1%
+    tumor                          9192/10806 = 85.1%
 
-[diagnosis_detailed]  overall: 2893/10615 = 27.3%
+[diagnosis_detailed]  overall: 2862/9309 = 30.7%
     carcinoma                      0/240 = 0.0%
     germinoma                      1/97 = 1.0%
     glioma                         2752/3940 = 69.8%
     granuloma                      0/77 = 0.0%
     meduloblastoma                 0/127 = 0.0%
-    meningioma                     115/2888 = 4.0%
+    meningioma                     84/1586 = 5.3%
     neurocitoma                    0/999 = 0.0%
     papiloma                       0/237 = 0.0%
     pituitary tumor                0/930 = 0.0%
-    schwannoma                     25/932 = 2.7%
+    schwannoma                     25/928 = 2.7%
     tuberculoma                    0/148 = 0.0%
 
 ============================================================
   STANDALONE MEDGEMMA — Score distributions
 ============================================================
 
-[diagnosis_confidence]  overall avg: 0.948 (n=14749)
+[diagnosis_confidence]  overall avg: 0.949 (n=13198)
     arachnoid cyst                 0.980 (n=2)
-    cyst                           0.931 (n=28)
-    glioma                         0.925 (n=2)
+    cyst                           0.931 (n=22)
+    glioma                         0.900 (n=1)
     hemorrhage                     0.950 (n=1)
-    hemorrhagic                    0.900 (n=4)
-    hydrocephalus                  0.954 (n=16)
-    multiple sclerosis             0.942 (n=949)
-    normal                         0.988 (n=2498)
-    other abnormalities            0.752 (n=348)
+    hemorrhagic                    0.900 (n=3)
+    hydrocephalus                  0.954 (n=14)
+    multiple sclerosis             0.942 (n=892)
+    normal                         0.988 (n=2405)
+    other abnormalities            0.749 (n=315)
     sinusitis                      0.950 (n=1)
-    stroke                         0.939 (n=85)
-    tumor                          0.946 (n=10814)
+    stroke                         0.937 (n=67)
+    tumor                          0.946 (n=9475)
 
-[severity_score]  overall avg: 0.749 (n=10710)
+[severity_score]  overall avg: 0.747 (n=9359)
     arachnoid cyst                 N/A
-    cyst                           0.625 (n=24)
-    glioma                         0.750 (n=2)
+    cyst                           0.605 (n=20)
+    glioma                         0.700 (n=1)
     hemorrhage                     0.700 (n=1)
-    hemorrhagic                    0.675 (n=4)
-    hydrocephalus                  0.740 (n=10)
-    multiple sclerosis             0.607 (n=413)
-    normal                         0.159 (n=22)
-    other abnormalities            0.436 (n=166)
+    hemorrhagic                    0.667 (n=3)
+    hydrocephalus                  0.744 (n=8)
+    multiple sclerosis             0.608 (n=377)
+    normal                         0.137 (n=19)
+    other abnormalities            0.423 (n=148)
     sinusitis                      0.600 (n=1)
-    stroke                         0.706 (n=85)
-    tumor                          0.762 (n=9981)
+    stroke                         0.707 (n=67)
+    tumor                          0.760 (n=8714)
 
-[severity_confidence]  overall avg: 0.836 (n=12059)
+[severity_confidence]  overall avg: 0.835 (n=10634)
     arachnoid cyst                 0.500 (n=2)
-    cyst                           0.846 (n=26)
-    glioma                         0.850 (n=2)
+    cyst                           0.840 (n=20)
+    glioma                         0.800 (n=1)
     hemorrhage                     0.850 (n=1)
-    hemorrhagic                    0.812 (n=4)
-    hydrocephalus                  0.763 (n=15)
-    multiple sclerosis             0.661 (n=668)
-    normal                         0.991 (n=618)
-    other abnormalities            0.624 (n=221)
+    hemorrhagic                    0.817 (n=3)
+    hydrocephalus                  0.746 (n=13)
+    multiple sclerosis             0.658 (n=621)
+    normal                         0.992 (n=594)
+    other abnormalities            0.620 (n=198)
     sinusitis                      0.850 (n=1)
-    stroke                         0.842 (n=85)
-    tumor                          0.843 (n=10415)
+    stroke                         0.838 (n=67)
+    tumor                          0.842 (n=9113)
 
 ============================================================
   SAM3 + MEDGEMMA — Accuracy per field
 ============================================================
 
-[modality]  overall: 10828/11038 = 98.1%
-    mri                            10828/11038 = 98.1%
+[modality]  overall: 9928/10119 = 98.1%
+    mri                            9928/10119 = 98.1%
 
-[specialized_sequence]  overall: 2566/8640 = 29.7%
-    t1                             448/2044 = 21.9%
-    t1c+                           1502/4756 = 31.6%
-    t2                             616/1840 = 33.5%
+[specialized_sequence]  overall: 2278/7721 = 29.5%
+    t1                             406/1755 = 23.1%
+    t1c+                           1337/4340 = 30.8%
+    t2                             535/1626 = 32.9%
 
-[plane]  overall: 2592/5081 = 51.0%
-    axial                          2592/5081 = 51.0%
+[plane]  overall: 2146/4162 = 51.6%
+    axial                          2146/4162 = 51.6%
 
 [diagnosis_name]  overall: 10457/12024 = 87.0%
     normal                         845/2046 = 41.3%
@@ -149,7 +152,47 @@
     tumor                          0.834 (n=10015)
 
 ============================================================
-  SAM3 — Tumor images where SAM3 missed tumor → wrong pred
+  McNEMAR'S TEST — Standalone vs SAM3+MedGemma (paired)
+============================================================
+  Shared images available for pairing: 10119
+
+[modality]  n=10119
+    Both correct      : 9045
+    Only standalone   : 95  (SAM3 hurt)
+    Only pipeline     : 883  (SAM3 helped)
+    Both wrong        : 96
+    McNemar chi2=633.302, p=9.5664e-140  ***
+
+[specialized_sequence]  n=7721
+    Both correct      : 671
+    Only standalone   : 1193  (SAM3 hurt)
+    Only pipeline     : 1607  (SAM3 helped)
+    Both wrong        : 4250
+    McNemar chi2=60.917, p=5.9517e-15  ***
+
+[plane]  n=4162
+    Both correct      : 767
+    Only standalone   : 482  (SAM3 hurt)
+    Only pipeline     : 1379  (SAM3 helped)
+    Both wrong        : 1534
+    McNemar chi2=431.390, p=8.0993e-96  ***
+
+[diagnosis_name]  n=10119
+    Both correct      : 7510
+    Only standalone   : 709  (SAM3 hurt)
+    Only pipeline     : 1133  (SAM3 helped)
+    Both wrong        : 767
+    McNemar chi2=97.138, p=6.4646e-23  ***
+
+[diagnosis_detailed]  n=8094
+    Both correct      : 1747
+    Only standalone   : 373  (SAM3 hurt)
+    Only pipeline     : 750  (SAM3 helped)
+    Both wrong        : 5224
+    McNemar chi2=125.891, p=3.2479e-29  ***
+
+============================================================
+  SAM3 — Tumor images where SAM3 missed tumor -> wrong pred
 ============================================================
   Count: 128
   gt=germinoma       pred=normal     fraction=0.00000  data/images-44c/Germinoma T1/59_big_gallery.jpeg
@@ -282,7 +325,7 @@
   gt=tumor           pred=other abnormalities fraction=0.00017  data/figshare/brainTumorDataPublic_2299-3064/3062.jpg
 
 ============================================================
-  SAM3 — Normal images where SAM3 found tumor → pred=tumor
+  SAM3 — Normal images where SAM3 found tumor -> pred=tumor
 ============================================================
   Count: 359
   gt=normal          pred=tumor          fraction=0.01881  data/Br35H/no/no949.jpg
@@ -651,7 +694,7 @@
   sam3_bbox records total : 12024
   Tumor images            : 9978
     SAM3 missed tumor     : 1018
-    → also mis-classified : 128
+    -> also mis-classified : 128
   Normal images           : 2046
     SAM3 found tumor pxls : 521
-    → also pred as tumor  : 359
+    -> also pred as tumor  : 359
