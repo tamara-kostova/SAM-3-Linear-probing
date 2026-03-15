@@ -171,6 +171,10 @@ records = [r for r in all_standalone
 pr(f"Standalone (all datasets): {len(all_standalone)}")
 pr(f"Standalone (SAM3-matched): {len(records)}  <- used for all comparisons below")
 
+matched_paths = {norm_path(get(r, "input.image_path") or "") for r in records}
+sam3 = [r for r in raw_sam3 if norm_path(r.get("image_path", "")) in matched_paths]
+pr(f"SAM3 (matched to standalone): {len(sam3)}")
+
 # ── PART 1: Standalone MedGemma ───────────────────────────────────────────────
 
 pr("\n" + "="*60)
@@ -246,7 +250,7 @@ def norm_sam3(r):
         }},
     }
 
-sam3_norm = [norm_sam3(r) for r in raw_sam3]
+sam3_norm = [norm_sam3(r) for r in sam3]
 
 pr("\n" + "="*60)
 pr("  SAM3 + MEDGEMMA — Accuracy per field")

@@ -73,12 +73,14 @@ def save(fig, name):
 
 # ── load data ─────────────────────────────────────────────────────────────────
 
-standalone_all = load_jsonl(STANDALONE_PATH)
-standalone = [r for r in standalone_all
-              if (get(r, "input.metadata.dataset") or "").lower() in TUMOR_DATASETS]
-
 sam3_all = load_jsonl(SAM3_PATH)
 sam3 = [r for r in sam3_all if r.get("mode") == "sam3_bbox"]
+
+sam3_paths = {norm_path(r.get("image_path", "")) for r in sam3}
+
+standalone_all = load_jsonl(STANDALONE_PATH)
+standalone = [r for r in standalone_all
+              if (get(r, "input.metadata.dataset") or "").lower() in TUMOR_DATASETS and norm_path(get(r, "input.image_path") or "") in sam3_paths]
 
 # ── build lookup: normalised image path → standalone record ──────────────────
 
@@ -257,7 +259,7 @@ for h in helped:
 
 # ── save text report ──────────────────────────────────────────────────────────
 
-with open(OUT_TXT, "w") as f:
+with open(OUT_TXT, "w", encoding="utf-8") as f:
     f.write("\n".join(_lines))
 print(f"\n[saved] {OUT_TXT}")
 
