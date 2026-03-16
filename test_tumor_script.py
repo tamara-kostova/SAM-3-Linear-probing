@@ -2,14 +2,23 @@
 """
 Test on 125 BraTS 2021 Patients
 
-Simple script to test trained BraTS 2020 model on BraTS 2021 data.
+Tests the trained linear probe on BraTS 2021 data, reporting both pixel-level
+aggregate metrics and per-case (3D volume) Dice/IoU with 95% CI.
 
 Usage:
     python test_tumor_script.py \
         --test_data /path/to/BraTS2021_Training_Data \
         --checkpoint ./checkpoints/final_probe.pth \
-        --bpe_path sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz \
-        --patients_csv results/patient_overlap/brats2021_non_overlap_125.csv
+        --bpe_path sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz
+
+Defaults:
+    --patients_txt  test_125_from_intersection/patients.txt
+    --save_dir      test_125_from_intersection
+
+Outputs:
+    results.txt        pixel-level aggregate + per-case mean ± 95% CI
+    per_case_dice.csv  per-patient Dice/IoU with tp/fp/fn
+    test_results.png   confusion matrix, metrics bar chart, class distribution
 """
 
 import os
@@ -28,6 +37,8 @@ import nibabel as nib
 import gc
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scipy.stats as stats_module
+from collections import defaultdict
 
 def plot_metrics(results, save_dir):
     metric_keys = ['accuracy', 'iou', 'dice', 'precision', 'recall', 'f1']
@@ -166,19 +177,16 @@ class SAM3FeatureExtractor:
         return backbone_out
 
 
-def select_patients_from_csv(data_root, csv_path):
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"Patients CSV not found: {csv_path}")
+def select_patients_from_txt(data_root, txt_path):
+    if not os.path.exists(txt_path):
+        raise FileNotFoundError(f"Patients list not found: {txt_path}")
 
     selected = []
     missing = []
     seen = set()
-    with open(csv_path, newline='') as f:
-        reader = csv.DictReader(f)
-        if 'brats21_id' not in (reader.fieldnames or []):
-            raise ValueError(f"CSV must contain 'brats21_id' column: {csv_path}")
-        for row in reader:
-            patient_id = (row.get('brats21_id') or '').strip()
+    with open(txt_path) as f:
+        for line in f:
+            patient_id = line.strip()
             if not patient_id or patient_id in seen:
                 continue
             seen.add(patient_id)
@@ -191,17 +199,17 @@ def select_patients_from_csv(data_root, csv_path):
     print(f"\n{'='*80}")
     print("PATIENT SELECTION")
     print('='*80)
-    print(f"CSV file: {csv_path}")
-    print(f"Requested from CSV: {len(seen)}")
+    print(f"Patients file: {txt_path}")
+    print(f"Requested: {len(seen)}")
     print(f"Found in dataset: {len(selected)}")
     if missing:
         print(f"Missing from dataset: {len(missing)}")
         print(f"First 5 missing: {missing[:5]}")
 
     if not selected:
-        raise RuntimeError("No valid patient directories found from CSV selection.")
+        raise RuntimeError("No valid patient directories found.")
 
-    print(f"✓ Selected {len(selected)} patients from CSV")
+    print(f"✓ Selected {len(selected)} patients")
     print(f"\nFirst 5 selected:")
     for i, p in enumerate(selected[:5]):
         print(f"  {i+1}. {os.path.basename(p)}")
@@ -330,23 +338,37 @@ class CachedDataset(torch.utils.data.Dataset):
         return data['image'].float(), data['mask'].long()
 
 
-def precompute_features(dataset, feature_extractor, save_path, batch_size=16, device='cuda'):
+def precompute_features(dataset, feature_extractor, save_path, batch_size=16, device='cuda',
+                        cache_paths=None):
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
-    
+
     print(f"\n{'='*80}")
     print("EXTRACTING SAM3 FEATURES")
     print('='*80)
-    
+
     first_images, first_masks = next(iter(dataloader))
     with torch.no_grad():
         test_features = feature_extractor.extract_features(first_images.to(device))
-    
+
     feature_shape = test_features.shape[1:]
     total_samples = len(dataset)
-    
+
     print(f"Samples: {total_samples}")
     print(f"Feature shape: {feature_shape}")
-    
+
+    # Build per-sample metadata from cache filenames: {patient_id}_{slice:03d}.pt
+    case_ids = []
+    slice_idxs = []
+    if cache_paths is not None:
+        for p in cache_paths:
+            stem = Path(p).stem          # e.g. BraTS2021_00000_049
+            parts = stem.rsplit('_', 1)  # ['BraTS2021_00000', '049']
+            case_ids.append(parts[0])
+            slice_idxs.append(int(parts[1]))
+    else:
+        case_ids = ['unknown'] * total_samples
+        slice_idxs = list(range(total_samples))
+
     with h5py.File(save_path, 'w') as h5f:
         features_dset = h5f.create_dataset(
             'features', shape=(total_samples, *feature_shape),
@@ -358,9 +380,14 @@ def precompute_features(dataset, feature_extractor, save_path, batch_size=16, de
             dtype='int64', chunks=(1, *first_masks.shape[1:]),
             compression='gzip', compression_opts=4
         )
+        # Store metadata as fixed-length ASCII strings
+        dt = h5py.special_dtype(vlen=str)
+        case_ids_dset = h5f.create_dataset('case_ids', data=np.array(case_ids, dtype=object),
+                                            dtype=dt)
+        h5f.create_dataset('slice_idxs', data=np.array(slice_idxs, dtype=np.int32))
         h5f.attrs['feature_dim'] = feature_shape[0]
         h5f.attrs['total_samples'] = total_samples
-        
+
         current_idx = 0
         for images, masks in tqdm(dataloader, desc="Extracting"):
             images = images.to(device)
@@ -372,7 +399,7 @@ def precompute_features(dataset, feature_extractor, save_path, batch_size=16, de
                 del features, images
                 if current_idx % 160 == 0:
                     torch.cuda.empty_cache()
-    
+
     print(f"✓ Saved {current_idx} features ({os.path.getsize(save_path)/1e6:.1f} MB)")
     print('='*80)
 
@@ -383,11 +410,14 @@ class HDF5Dataset(torch.utils.data.Dataset):
         with h5py.File(h5_path, 'r') as h5f:
             self.total_samples = h5f.attrs['total_samples']
             self.feature_dim = h5f.attrs['feature_dim']
+            self.case_ids = ([s.decode() if isinstance(s, bytes) else s
+                              for s in h5f['case_ids'][:]]
+                             if 'case_ids' in h5f else None)
         self.h5f = None
-    
+
     def __len__(self):
         return self.total_samples
-    
+
     def __getitem__(self, idx):
         if self.h5f is None:
             self.h5f = h5py.File(self.h5_path, 'r')
@@ -475,19 +505,108 @@ def test_model(model, test_loader, device='cuda'):
 
 
 
+def test_model_per_case(model, test_dataset, device='cuda', batch_size=4):
+    """Aggregate slice predictions into 3D volumes per case, compute per-case Dice."""
+    if test_dataset.case_ids is None:
+        raise RuntimeError("HDF5 file missing 'case_ids' metadata — re-run feature extraction.")
+
+    model.to(device)
+    model.eval()
+
+    print(f"\n{'='*80}")
+    print("RUNNING PER-CASE INFERENCE")
+    print('='*80)
+
+    # Accumulate tp/fp/fn per case
+    case_counts = defaultdict(lambda: {'tp': 0, 'fp': 0, 'fn': 0})
+
+    loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+
+    sample_idx = 0
+    with torch.no_grad(), torch.cuda.amp.autocast(enabled=(device == 'cuda')):
+        for features, masks in tqdm(loader, desc="Per-case inference"):
+            features = features.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True)
+
+            logits = model(features)
+            if logits.shape[-2:] != masks.shape[-2:]:
+                logits = torch.nn.functional.interpolate(
+                    logits, size=masks.shape[-2:], mode='bilinear', align_corners=False
+                )
+
+            preds = torch.argmax(logits, dim=1).cpu().numpy().astype(np.uint8)
+            masks_np = masks.cpu().numpy().astype(np.uint8)
+            batch_len = len(preds)
+
+            for i in range(batch_len):
+                case_id = test_dataset.case_ids[sample_idx + i]
+                p = preds[i].ravel()
+                m = masks_np[i].ravel()
+                case_counts[case_id]['tp'] += int(np.sum((p == 1) & (m == 1)))
+                case_counts[case_id]['fp'] += int(np.sum((p == 1) & (m == 0)))
+                case_counts[case_id]['fn'] += int(np.sum((p == 0) & (m == 1)))
+
+            del features, masks, logits, preds
+            torch.cuda.empty_cache()
+            sample_idx += batch_len
+
+    eps = 1e-8
+    rows = []
+    for case_id, c in sorted(case_counts.items()):
+        tp, fp, fn = c['tp'], c['fp'], c['fn']
+        dice = 2 * tp / (2 * tp + fp + fn + eps)
+        iou  = tp / (tp + fp + fn + eps)
+        rows.append({'case': case_id, 'tp': tp, 'fp': fp, 'fn': fn,
+                     'dice': dice, 'iou': iou})
+
+    dices = np.array([r['dice'] for r in rows])
+    ious  = np.array([r['iou']  for r in rows])
+    n = len(dices)
+
+    def _ci(arr):
+        lo, hi = stats_module.t.interval(
+            0.95, df=n - 1, loc=arr.mean(), scale=stats_module.sem(arr)
+        )
+        return arr.mean(), float(arr.std()), lo, hi
+
+    mean_dice, std_dice, dice_ci_lo, dice_ci_hi = _ci(dices)
+    mean_iou,  std_iou,  iou_ci_lo,  iou_ci_hi  = _ci(ious)
+
+    print(f"\n{'='*80}")
+    print("PER-CASE TEST RESULTS")
+    print('='*80)
+    print(f"Cases:       {n}")
+    print(f"Mean Dice:   {mean_dice:.4f}  95% CI [{dice_ci_lo:.4f}, {dice_ci_hi:.4f}]")
+    print(f"Std Dice:    {std_dice:.4f}")
+    print(f"Median Dice: {np.median(dices):.4f}")
+    print(f"Mean IoU:    {mean_iou:.4f}  95% CI [{iou_ci_lo:.4f}, {iou_ci_hi:.4f}]")
+    print(f"Std IoU:     {std_iou:.4f}")
+    print(f"Min / Max Dice: {dices.min():.4f} / {dices.max():.4f}")
+    print('='*80)
+
+    return rows, {
+        'mean_dice': mean_dice, 'std_dice': std_dice,
+        'dice_ci_lo': dice_ci_lo, 'dice_ci_hi': dice_ci_hi,
+        'median_dice': float(np.median(dices)),
+        'mean_iou': mean_iou, 'std_iou': std_iou,
+        'iou_ci_lo': iou_ci_lo, 'iou_ci_hi': iou_ci_hi,
+        'n_cases': n,
+    }
+
+
 def main(args):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(args.save_dir, exist_ok=True)
 
-    # Select patients from CSV
-    selected = select_patients_from_csv(args.test_data, args.patients_csv)
+    # Select patients from txt
+    selected = select_patients_from_txt(args.test_data, args.patients_txt)
     selected_count = len(selected)
 
     print(f"\n{'='*80}")
     print(f"TESTING ON {selected_count} BRATS 2021 PATIENTS")
     print('='*80)
     print(f"Test data: {args.test_data}")
-    print(f"Patients CSV: {args.patients_csv}")
+    print(f"Patients file: {args.patients_txt}")
     print(f"Device: {device}")
     print('='*80)
     
@@ -506,8 +625,9 @@ def main(args):
         print("\nLoading SAM3...")
         sam3 = build_sam3_image_model(bpe_path=args.bpe_path)
         extractor = SAM3FeatureExtractor(sam3, device)
-        
-        precompute_features(dataset, extractor, features_path, 16, device)
+
+        precompute_features(dataset, extractor, features_path, 16, device,
+                            cache_paths=cache_paths)
         del sam3, extractor
     torch.cuda.empty_cache()
     
@@ -521,32 +641,57 @@ def main(args):
     if 'history' in ckpt:
         print(f"Training IoU: {ckpt['history']['val_ious'][-1]:.4f}")
     
-    # Test
+    # Test (pixel-level aggregate)
     test_dataset = HDF5Dataset(features_path)
     test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=2)
     results = test_model(model, test_loader, device)
-    
-    # Save
+
+    # Per-case Dice (3D volume aggregation)
+    per_case_rows, summary = test_model_per_case(model, test_dataset, device, batch_size=4)
+
+    # Save both pixel-level and per-case results
     with open(os.path.join(args.save_dir, 'results.txt'), 'w') as f:
         f.write(f"Test on {selected_count} BraTS 2021 patients\n")
         f.write("="*60 + "\n")
-
+        f.write("\nPixel-level aggregate\n")
+        f.write("="*60 + "\n")
         for k, v in results.items():
             if isinstance(v, (float, int)):
                 f.write(f"{k}: {v:.4f}\n")
             elif k == 'confusion_matrix':
                 f.write("confusion_matrix:\n")
                 f.write(f"{v}\n")
+        f.write("\nPer-case (3D volume) mean ± 95% CI\n")
+        f.write("="*60 + "\n")
+        f.write(f"n_cases:     {summary['n_cases']}\n")
+        f.write(f"mean_dice:   {summary['mean_dice']:.4f}\n")
+        f.write(f"std_dice:    {summary['std_dice']:.4f}\n")
+        f.write(f"dice_95_ci:  [{summary['dice_ci_lo']:.4f}, {summary['dice_ci_hi']:.4f}]\n")
+        f.write(f"median_dice: {summary['median_dice']:.4f}\n")
+        f.write(f"mean_iou:    {summary['mean_iou']:.4f}\n")
+        f.write(f"std_iou:     {summary['std_iou']:.4f}\n")
+        f.write(f"iou_95_ci:   [{summary['iou_ci_lo']:.4f}, {summary['iou_ci_hi']:.4f}]\n")
+
+    # Save per-case CSV
+    per_case_csv = os.path.join(args.save_dir, 'per_case_dice.csv')
+    with open(per_case_csv, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['case', 'dice', 'iou', 'tp', 'fp', 'fn'])
+        writer.writeheader()
+        writer.writerows(per_case_rows)
+    print(f"✓ Per-case CSV saved to {per_case_csv}")
 
     plot_metrics(results, args.save_dir)
     plot_predictions(features_path, model, args.save_dir, device, num_samples=5)
     create_plots(results, args.save_dir, selected_count)
     if 'history' in ckpt:
         print(f"\nComparison:")
-        print(f"  Training: {ckpt['history']['val_ious'][-1]:.4f}")
-        print(f"  Test:     {results['iou']:.4f}")
-        print(f"  Gap:      {results['iou'] - ckpt['history']['val_ious'][-1]:+.4f}")
-    
+        print(f"  Training IoU: {ckpt['history']['val_ious'][-1]:.4f}")
+        print(f"  Test IoU (pixel): {results['iou']:.4f}")
+        print(f"  Test Dice (per-case): {summary['mean_dice']:.4f} "
+              f"[{summary['dice_ci_lo']:.4f}, {summary['dice_ci_hi']:.4f}]")
+        print(f"  Test IoU  (per-case): {summary['mean_iou']:.4f} "
+              f"[{summary['iou_ci_lo']:.4f}, {summary['iou_ci_hi']:.4f}]")
+
     print(f"\n✓ Complete! Results in {args.save_dir}")
 
 
@@ -556,11 +701,11 @@ def parse_args():
     parser.add_argument('--checkpoint', required=True)
     parser.add_argument('--bpe_path', required=True)
     parser.add_argument(
-        '--patients_csv',
-        default='results/patient_overlap/brats2021_non_overlap_125.csv',
-        help="CSV containing a 'brats21_id' column for deterministic patient selection",
+        '--patients_txt',
+        default='test_125_from_intersection/patients.txt',
+        help="Text file with one BraTS patient ID per line",
     )
-    parser.add_argument('--save_dir', default='./test_125_fixed')
+    parser.add_argument('--save_dir', default='./test_125_from_intersection')
     return parser.parse_args()
 
 
