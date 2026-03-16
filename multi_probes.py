@@ -219,7 +219,13 @@ def train_separate_probe(
             with autocast():
                 logits = probe(features)
                 if epoch == 0 and batch_idx == 0:
-                    mask_exp = masks.unsqueeze(1).expand_as(features)
+                    masks_small = torch.nn.functional.interpolate(
+                        masks.unsqueeze(1).float(),          # [B, 1, 1008, 1008]
+                        size=features.shape[-2:],            # → [B, 1, 72, 72]
+                        mode='nearest'
+                    ).squeeze(1).long()                      # [B, 72, 72]
+
+                    mask_exp = masks_small.unsqueeze(1).expand_as(features)
                     fg = features[mask_exp == 1]
                     bg = features[mask_exp == 0]
 

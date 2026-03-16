@@ -10,9 +10,9 @@ Usage
   # Run all three tasks separately (Architecture A – recommended):
   python run_linear_probing.py \
       --tasks tumor ms stroke \
-      --tumor_root  /data/BraTS2021 \
-      --ms_root     /data/MSLesSeg \
-      --stroke_root /data/ISLES2022 \
+      --tumor_root  brats_data \
+      --ms_root     MS/MSLesSeg Dataset \
+      --stroke_root ISLES-2022 \
       --bpe_path    sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz \
       --save_dir    ./results \
       --arch        separate
@@ -258,8 +258,10 @@ def main(args):
             print(f"  MS class weights: {class_weights['ms']}")
         elif task == 'stroke':
             cw = dataset_splits['stroke'][0].dataset.compute_class_weights()
-            class_weights['stroke'] = cw.tolist()
-            print(f"  Stroke class weights: {class_weights['stroke']}")
+            cw_capped = cw.clone()
+            cw_capped[1] = min(cw[1].item(), 10.0)   # cap at 10
+            class_weights['stroke'] = cw_capped.tolist()
+            print(f"  Stroke class weights (capped): {class_weights['stroke']}")
         else:
             class_weights[task] = None   # BraTS: equal weights
 
