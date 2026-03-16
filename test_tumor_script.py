@@ -7,7 +7,7 @@ aggregate metrics and per-case (3D volume) Dice/IoU with 95% CI.
 
 Usage:
     python test_tumor_script.py \
-        --test_data /path/to/BraTS2021_Training_Data \
+        --test_data brats2021/BraTS2021_Training_Data \
         --checkpoint ./checkpoints/final_probe.pth \
         --bpe_path sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz
 

@@ -30,6 +30,8 @@ from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
 from scipy.ndimage import zoom
+from sam3.sam3 import build_sam3_image_model
+from sam3.model.sam3_image_processor import Sam3Processor
 
 
 PROMPT = "ischemic infarct"
@@ -103,14 +105,15 @@ def load_stroke_case_dwi(case_name, base_path):
 
     # DWI image
     dwi_dir   = base_path / case_name / "ses-0001" / "dwi"
-    dwi_files = (list(dwi_dir.glob("*_dwi.nii*")) +
-                 list(dwi_dir.glob("*_DWI.nii*")) +
-                 list(dwi_dir.glob("*dwi*.nii*")))
+    dwi_files = sorted([
+        f for f in dwi_dir.rglob("*.nii*")
+        if f.is_file()
+    ])
 
     if not dwi_files:
         print(f"  [WARN] No DWI in {dwi_dir}")
         return None, None
-
+    
     dwi_vol = nib.load(dwi_files[0]).get_fdata()
     if dwi_vol.ndim == 4:                        # 4-D: take b=1000 (index 1)
         dwi_vol = dwi_vol[..., min(1, dwi_vol.shape[-1] - 1)]
@@ -245,6 +248,25 @@ def evaluate(subjects, data_root, processor, output_dir):
     print(f"✓ Summary           : {txt_path}")
 
 
+def load_sam3(device="cuda"):
+
+    print("Loading SAM3...")
+
+    bpe_path = "sam3/sam3/assets/bpe_simple_vocab_16e6.txt.gz"
+
+    # build model
+    model = build_sam3_image_model(
+        bpe_path=bpe_path
+    )
+
+    model.to(device)
+    model.eval()
+
+    processor = Sam3Processor(model, confidence_threshold=0.5)
+
+    print("✓ SAM3 loaded")
+
+    return model, processor
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def parse_args():
@@ -265,11 +287,9 @@ def main():
     print(f"Device: {device}")
 
     # Load SAM3 (ultralytics SAM wrapper)
-    print("Loading SAM3 …")
-    from ultralytics import SAM
-    processor = SAM("sam3.pt")
-    processor.to(device)
-    print("✓ SAM3 loaded")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    _, processor = load_sam3(device)
 
     # Subject list
     if args.test_subjects:

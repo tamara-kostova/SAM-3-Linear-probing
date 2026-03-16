@@ -1,28 +1,30 @@
-import torch
 import os
+import numpy as np
 from pathlib import Path
 
-cache_dir = "results/cache_stroke"
-all_paths = sorted(Path(cache_dir).glob("*.pt"))
+data_root = Path("ISLES-2022")  # adjust to your path
 
-# Reproduce the exact same split
-full_n  = len(all_paths)
-n_test  = int(full_n * 0.15)   # --test_ratio default
-n_val   = int(full_n * 0.15)
-n_train = full_n - n_val - n_test
+# discover subjects
+rawdata = data_root / "rawdata"
+if rawdata.is_dir():
+    all_subjects = sorted(d for d in os.listdir(rawdata) if d.startswith("sub-"))
+else:
+    all_subjects = sorted(
+        d for d in os.listdir(data_root)
+        if (data_root / d).is_dir() and d.startswith("sub-")
+    )
 
-gen = torch.Generator().manual_seed(42)
-indices = torch.randperm(full_n, generator=gen).tolist()
+print(f"Total subjects: {len(all_subjects)}")
 
-test_indices = indices[n_train + n_val:]   # last chunk = test
+# pick 25 test subjects with seed 42
+rng = np.random.default_rng(42)
+test_subjects = sorted(rng.choice(all_subjects, size=25, replace=False).tolist())
 
-# Map indices to subject IDs
-test_subjects = set()
-for i in test_indices:
-    stem = all_paths[i].stem          # e.g. sub-stroke0001_ses-0001_042
-    subject = "_".join(stem.split("_")[:2])  # sub-stroke0001_ses-0001
-    test_subjects.add(subject)
+print(f"Selected {len(test_subjects)} test subjects:")
+for s in test_subjects:
+    print(f"  {s}")
 
-print(sorted(test_subjects))
+# save to file
 with open("stroke_test_subjects.txt", "w") as f:
-    f.write("\n".join(sorted(test_subjects)))
+    f.write("\n".join(test_subjects))
+print("Saved to stroke_test_subjects.txt")

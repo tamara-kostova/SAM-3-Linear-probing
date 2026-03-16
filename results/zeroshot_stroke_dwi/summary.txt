@@ -1,0 +1,9 @@
+SAM3 Zero-Shot Stroke — DWI, all slices
+============================================================
+Prompt              : ischemic infarct
+Cases evaluated     : 25
+Per-case Dice       : 0.1070  95% CI [0.0605, 0.1535]
+Std Dice            : 0.1105
+Median Dice         : 0.0849
+Global (pixel) Dice : 0.3424
+Global (pixel) IoU  : 0.2065
