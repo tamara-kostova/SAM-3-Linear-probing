@@ -1,0 +1,7 @@
+Wilcoxon: W=7863.0, p=1.9797e-22
+
+Probe    mean=0.801  median=0.865  std=0.175
+ZeroShot mean=0.186  median=0.163  std=0.096
+n matched cases: 125
+
+Shapiro-Wilk on differences: p=0.0000 (not normal -- Wilcoxon correct)
