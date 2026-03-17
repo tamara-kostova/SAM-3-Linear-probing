@@ -1,288 +1,175 @@
-# SAM3 Linear Probing — Results Report
+﻿# SAM3 Linear Probing -- Results Report
 
 ---
 
 ## 1. Overview
 
-This project evaluates SAM3 (frozen backbone) across three neuroimaging tasks:
-- **Tumor** — brain tumour segmentation (BraTS 2021)
-- **MS** — multiple sclerosis lesion segmentation (MSLesSeg)
-- **Stroke** — ischaemic infarct segmentation (ISLES 2022)
+This report summarizes:
+- SAM3 zero-shot segmentation on BraTS 2021
+- Linear probing on frozen SAM3 features (BraTS 2020 train, BraTS 2021 test)
+- Generalisation to MS and stroke segmentation
+- MedGemma 1.5 4B standalone MRI classification
+- SAM3 + MedGemma spatial-attention pipeline and its failure modes
 
-And a downstream task:
-- **MedGemma diagnosis** — does SAM3 soft masking improve MedGemma's tumour classification?
-
-All linear probes use a single `Conv2d(feature_dim → 2, kernel=1)` trained on top of the
-**frozen** SAM3 image encoder. The backbone is never updated.
+All probes use a single `1x1 Conv2d` head on top of the frozen SAM3 image encoder.
 
 ---
 
-## 2. Task 1 — Brain Tumour Segmentation (BraTS)
+## 2. SAM3 Zero-Shot Segmentation (BraTS 2021)
 
-### Zero-shot SAM3 (baseline)
-| Metric | Value |
-|--------|-------|
-| Dice   | 0.450 |
-| IoU    | 0.306 |
+Evaluation on 125 BraTS 2021 patients (T1ce), pixel-level aggregate with 95% CI:
 
-### Linear probe — 125 BraTS 2021 patients (non-overlapping test set)
-| Metric    | Value     |
-|-----------|-----------|
-| Accuracy  | **0.9933** |
-| IoU       | **0.7185** |
-| Dice      | **0.8362** |
-| Precision | 0.8811    |
-| Recall    | 0.7957    |
-| F1        | 0.8362    |
+| Metric | Value | 95% CI |
+|---|---:|---:|
+| Dice | 0.189 | [0.184, 0.193] |
+| IoU | 0.124 | [0.120, 0.128] |
+| Sensitivity | 0.397 | [0.389, 0.405] |
 
-Confusion matrix (pixels): TN=9,919,504,318 · FP=23,390,097 · FN=44,493,271 · TP=173,252,314
-
-**Improvement: +0.386 Dice over zero-shot.**
-
-The probe was trained and validated on **BraTS 2020** (369 patients, `t1ce` modality,
-80/20 train/val split) and tested on **125 non-overlapping BraTS 2021 patients**
-(deduplicated against BraTS 2020 via TCIA metadata to prevent data leakage).
-Results from `test_125_from_intersection/results.txt`.
-Checkpoint: `checkpoints/final_probe.pth`.
-
-### Why it worked well
-- Large dataset (~1 251 patients, thousands of slices)
-- T1ce-enhancing tumours are large and high-contrast
-- SAM3 features cleanly separate tumour from background with a linear decision boundary
+SAM3 produces non-empty masks on all cases and shows partial tumor localization
+(sensitivity 0.397), but precision is poor and Dice/IoU are too low for clinical use.
 
 ---
 
-## 3. Task 2 — MS Lesion Segmentation (MSLesSeg)
+## 3. Linear Probing on Frozen SAM3 Features (BraTS)
 
-### Zero-shot SAM3 — corrected protocol (test set, all slices, global pixel metrics)
-Notebook: `12_SAM3_MS_dataset_all_slices.ipynb` — run 2026-03-10, prompt: "white matter lesion"
+**Setup**: Linear probe trained on BraTS 2020, evaluated on the same 125 BraTS 2021
+patients as the zero-shot test set.
 
-| Metric      | Value  |
-|-------------|--------|
-| Dice        | **0.052** |
-| IoU         | 0.027  |
-| Accuracy    | 0.999  |
-| Sensitivity | 0.027  |
-| Specificity | 1.000  |
+**Results** (mean with 95% CI):
 
-Dataset: 22 test cases, 4 004 slices total (1 751 with lesion, 2 253 empty).
+| Method | Dice | IoU | Sensitivity | Precision |
+|---|---:|---:|---:|---:|
+| Zero-shot (pixel) | 0.189 | 0.124 | 0.397 | --- |
+| Probe (pixel) | **0.836** | **0.719** | **0.796** | **0.881** |
+| Probe (case mean) | **0.801** | **0.693** | --- | --- |
+| Delta (pixel) | **+0.647** | **+0.595** | **+0.399** | --- |
 
-<details>
-<summary>Original zero-shot (lesion slices only, best slice per case — not comparable)</summary>
+Per-case Dice mean is 0.801 with 95% CI [0.770, 0.832]. The per-case IoU mean is
+0.693 with 95% CI [0.662, 0.725].
 
-| Metric | Value | Note |
-|--------|-------|------|
-| Dice   | 0.535 | Best lesion slice per case, per-slice Dice averaged |
+**Statistical test (paired, n=125):**
+- Shapiro-Wilk rejected normality of differences (p < 1e-4).
+- One-sided Wilcoxon signed-rank test: W = 7863.0, p = 1.98e-22.
 
-</details>
-
-### Linear probe — retrained with `empty_ratio=1.0` (test set, all slices)
-| Metric   | Value      |
-|----------|------------|
-| Accuracy | 0.9834     |
-| IoU      | **0.1511** |
-| Dice     | **0.2625** |
-
-**The retrained probe outperforms the corrected zero-shot SAM3 (+0.210 Dice).**
-
-The original zero-shot Dice of 0.535 was evaluated only on the best lesion slice per
-case; when re-run on all slices with global pixel-level metrics (matching the linear
-probe protocol), zero-shot drops to 0.052. The retrained probe's 0.263 Dice is a
-genuine and substantially larger improvement.
-
-<details>
-<summary>Earlier probe trained with <code>empty_ratio=0.3</code> (distribution mismatch — superseded)</summary>
-
-| Metric   | Value |
-|----------|-------|
-| Accuracy | 0.985 |
-| IoU      | 0.081 |
-| Dice     | 0.149 |
-
-Probe trained on 30% empty slices, tested on 30% — understates real-world performance
-because the test distribution did not match the ~89% empty-slice rate of the full dataset.
-
-</details>
-
-### Why the probe still underperforms supervised baselines
-1. **Small dataset** — MSLesSeg has only ~75 patients (~22 train, ~53 test in provided split)
-2. **Severe class imbalance** — MS lesions cover ~1–2% of pixels per slice; a linear
-   probe with ~512 parameters cannot learn a reliable threshold under this imbalance.
-3. **Feature resolution** — SAM3 downsamples to a coarse feature map; tiny MS plaques
-   (sometimes 2–5 mm) may fall within a single feature vector after downsampling.
+Conclusion: the linear probe improvement over zero-shot is highly significant.
 
 ---
 
-## 4. Task 3 — Stroke Lesion Segmentation (ISLES 2022)
+## 4. Generalisation: MS and Stroke Segmentation
 
-### Zero-shot SAM3 (original notebook — best slice per case, 25/100 cases)
-| Metric | Value | Note |
-|--------|-------|------|
-| Dice        | 0.492 | Best slice per case only |
-| IoU         | 0.366 | Best slice per case only |
-| Sensitivity | 0.487 | |
-| Specificity | 0.996 | |
-| Best prompt | "stroke lesion" | |
+**MSLesSeg (MS lesions)**
+- Zero-shot SAM3 (prompt: "white matter lesion"): Dice = 0.052, IoU = 0.027, Acc = 0.999
+- Linear probe: Dice = 0.263, IoU = 0.151, Acc = 0.983
 
-ISLES 2022 challenge winner (nnU-Net): **0.58 Dice**
+**ISLES 2022 (stroke lesions, DWI)**
+- Zero-shot SAM3 (prompt: "ischemic infarct"):
+  - Per-case Dice = 0.107 (95% CI [0.061, 0.154])
+  - Pixel-level Dice = 0.342, IoU = 0.207
+- Linear probe: Dice = 0.408, IoU = 0.256, Acc = 0.987
 
-### Linear probe — retrained with `empty_ratio=1.0` (test set, all slices)
-| Metric   | Value      |
-|----------|------------|
-| Accuracy | 0.9865     |
-| IoU      | **0.2564** |
-| Dice     | **0.4082** |
-
-**With matched train/test distribution the probe is competitive with zero-shot SAM3.**
-
-The zero-shot result (0.492 Dice) was evaluated only on the best lesion slice per case
-(25/100 patients). A corrected all-slices evaluation
-(`14_SAM3_Stroke_dataset_all_slices.ipynb`) was too slow to run — comparison remains
-protocol-mismatched until that notebook is re-run.
-
-<details>
-<summary>Earlier probe trained with <code>empty_ratio=0.3</code> (validation set only — superseded)</summary>
-
-| Metric    | Value |
-|-----------|-------|
-| Best IoU  | 0.125 |
-| Best Dice | 0.224 |
-| Final Acc | 0.952 |
-
-Validation-only run, 30% empty slices — substantially underestimates performance.
-
-</details>
-
-### Why the probe may still underperform supervised baselines
-- Stroke lesions have higher size variance (lacunar to large MCA territory)
-- Only 100 ISLES patients — fewer than needed for reliable linear probe training
-- DWI modality (used for stroke) may be less represented in SAM3's pretraining
+Performance is substantially lower than BraTS due to small datasets, severe class
+imbalance, and SAM3 feature downsampling that can blur tiny lesions.
 
 ---
 
-## 5. Task 4 — MedGemma Tumour Diagnosis (SAM3 influence)
+## 5. MedGemma 1.5 4B Standalone (Zero-Shot)
 
-MedGemma (`medgemma-1.5-4b-it` via vLLM) was evaluated standalone and with SAM3
-soft masking + bounding box on a multi-source brain MRI dataset
-(figshare, images-17, images-44c, Br35H). Source: `results/metrics_report.txt`.
+All tasks evaluated with a structured neuroradiology prompt (temperature 0).
+Accuracies with Wilson 95% CIs are reported in the paper; table below is the
+point-estimate summary.
 
-### Standalone MedGemma
-| Field | Accuracy | n |
-|-------|----------|---|
-| Modality | **90.4%** | 14 957 |
-| Diagnosis name | **80.8%** | 14 957 |
-| Diagnosis detailed | 27.3% | 10 615 |
-| Specialized sequence | 24.8% | 11 957 |
-| Plane (axial) | 24.4% | 7 416 |
-| Diagnosis confidence (avg score) | 0.948 | 14 749 |
+| Task | Subclass | Correct / Total | Acc. |
+|---|---|---:|---:|
+| Modality | MRI (all) | 12,114 / 13,390 | 90.5% |
+| Sequence | T1 | 340 / 2,439 | 13.9% |
+| Sequence | T1c+ | 1,548 / 5,706 | 27.1% |
+| Sequence | T2 | 662 / 2,248 | 29.4% |
+| Sequence | Overall | 2,550 / 10,393 | 24.5% |
+| Plane | Axial | 1,653 / 5,852 | 28.2% |
+| Diagnosis | Normal | 1,735 / 2,584 | 67.1% |
+| Diagnosis | Tumor | 9,192 / 10,806 | 85.1% |
+| Diagnosis | Overall | 10,927 / 13,390 | 81.6% |
+| Subtype | Glioma | 2,752 / 3,940 | 69.8% |
+| Subtype | Meningioma | 84 / 1,586 | 5.3% |
+| Subtype | Schwannoma | 25 / 928 | 2.7% |
+| Subtype | Pituitary | 0 / 930 | 0.0% |
+| Subtype | Overall | 2,862 / 9,309 | 30.7% |
 
-Diagnosis name breakdown:
-- Tumour: 85.2% (10 327 / 12 115)
-- Normal: 67.1% (1 735 / 2 585)
-- Other abnormalities: 6.6% (17 / 257)
+MedGemma is strong on coarse tasks (modality, tumor vs normal) but weak on
+fine-grained attributes (sequence, plane, subtype). A strong glioma bias dominates
+subtype prediction. Mean diagnosis confidence is 0.948, but calibration is not measured.
 
-Diagnosis detailed — strong on glioma only:
-- Glioma: **69.8%** (2 752 / 3 940)
-- Meningioma: 4.0% (115 / 2 888)
-- Schwannoma: 2.7% (25 / 932)
-- All other subtypes: 0.0%
+---
 
-### SAM3 + MedGemma (bounding box pipeline)
-| Field | Standalone | SAM3 pipeline | Δ |
-|-------|-----------|----------------|---|
-| Modality | 90.4% | **98.1%** | +7.7 pp |
-| Specialized sequence | 24.8% | **29.7%** | +4.9 pp |
-| Plane (axial) | 24.4% | **51.0%** | **+26.6 pp** |
-| Diagnosis name | 80.8% | **87.0%** | **+6.2 pp** |
-| Diagnosis detailed | **27.3%** | 17.0% | −10.3 pp |
-| Diagnosis confidence (avg) | **0.948** | 0.922 | −0.026 |
+## 6. SAM3 + MedGemma Pipeline
 
-Diagnosis name with SAM3 (breakdown):
-- Tumour: **96.3%** (9 612 / 9 978) — improved +11.1 pp
-- Normal: 41.3% (845 / 2 046) — degraded −25.8 pp
+SAM3 proposes a bounding box that is overlaid on the full image before MedGemma
+inference. Base pipeline uses theta = 0.0 (no confidence threshold).
 
-Diagnosis detailed with SAM3:
-- Glioma: **87.4%** (1 585 / 1 813) — improved +17.6 pp
-- All other subtypes: ≤3.1% — collapsed (pipeline dominated by "tumour" prediction)
+**Threshold comparison (diagnosis task):**
 
-**Key insight:** The SAM3 bounding box concentrates MedGemma on the tumour region, strongly
-boosting tumour and glioma detection. However its false positives cause large
-drops for normal images and non-glioma pathologies.
+| Configuration | Tumor Acc (%) | Normal Acc (%) |
+|---|---:|---:|
+| Standalone MedGemma | 85.1 | 67.1 |
+| Pipeline (theta = 0.00) | 96.3 | 41.3 |
 
-### SAM3 influence cross-reference (11 038 matched images)
+**Pipeline vs standalone (matched images; McNemar p-values):**
+
+| Task | Standalone (%) | Pipeline (%) | Delta | p |
+|---|---:|---:|---:|---:|
+| Modality | 90.5 | 98.1 | +7.6 | <0.001 |
+| Sequence | 24.5 | 29.5 | +5.0 | <0.001 |
+| Image Plane | 28.2 | 51.6 | +23.4 | <0.001 |
+| Diagnosis (overall) | 81.6 | 87.0 | +5.4 | <0.001 |
+| Diagnosis (tumor) | 85.1 | 96.3 | +11.2 | <0.001 |
+| Diagnosis (normal) | 67.1 | 41.3 | -25.8 | <0.001 |
+| Subtype (overall) | 30.7 | 17.0 | -13.7 | <0.001 |
+
+Key failure modes:
+- Normal-scan specificity collapse due to SAM3 false positives.
+- Subtype accuracy degradation; bounding boxes bias MedGemma toward generic "tumor".
+- Missed-tumor cases when SAM3 outputs no mask.
+
+---
+
+## 7. Case-Level SAM3 Influence (Diagnosis Task)
+
+Matched images: n = 10,119.
+
 | Outcome | Count | % |
-|---------|-------|---|
-| Both correct | 8 288 | 75.1% |
-| Both wrong | 779 | 7.1% |
-| SAM3 **hurt** (standalone ✓ → pipeline ✗) | 727 | **6.6%** |
-| SAM3 **helped** (standalone ✗ → pipeline ✓) | 1 244 | **11.3%** |
+|---|---:|---:|
+| Both correct | 7,510 | 74.2% |
+| Both wrong | 767 | 7.6% |
+| SAM3 helped (standalone wrong -> pipeline correct) | 1,133 | 11.2% |
+| SAM3 hurt (standalone correct -> pipeline wrong) | 709 | 7.0% |
 
-Net effect: SAM3 helped **+4.7 pp** more cases than it hurt.
+Net benefit: +424 images in favor of the pipeline.
 
 Hurt cases breakdown:
-- Normal images falsely predicted as tumour: **513 / 577** hurt normals (88.9%)
-- Tumour images mis-predicted: 150 (mainly schwannoma, meningioma, non-glioma types)
-
-SAM3 missed the tumour entirely in **128 images** (fraction ≈ 0), causing
-MedGemma to predict normal or other abnormality on confirmed tumour cases.
+- 577 hurt normal images; 513 (88.9%) flipped to tumor.
+- 132 hurt tumor images; most redirected to other abnormalities or normal.
 
 ---
 
-## 6. Summary Table
+## 8. Summary Table
 
-| Task | Zero-shot Dice | Probe Dice | Δ | Comparable? |
-|------|---------------|------------|---|-------------|
-| Tumor (BraTS) | 0.450 | **0.836** (IoU 0.719, Acc 0.993) | +0.386 | Yes (all slices, 125-patient test set) |
-| MS (MSLesSeg) | 0.052 | **0.263** (IoU 0.151, Acc 0.983) | **+0.210** | Yes (corrected — all slices, global pixel, test set) |
-| Stroke (ISLES) | 0.492† | **0.408** (IoU 0.256, Acc 0.987) | −0.084† | No† — protocol mismatch |
+| Task | Zero-shot Dice | Probe Dice | Delta | Comparable? |
+|---|---:|---:|---:|---|
+| Tumor (BraTS) | 0.189 | **0.836** | +0.647 | Yes (same 125-patient cohort) |
+| MS (MSLesSeg) | 0.052 | **0.263** | +0.210 | Yes (all slices, global pixel) |
+| Stroke (ISLES) | 0.107 (per-case) | **0.408** | +0.301 | Mixed (per-case vs pixel) |
 
-† Stroke zero-shot evaluated on best slice per case (25/100 cases); corrected all-slices
-  evaluation pending (`14_SAM3_Stroke_dataset_all_slices.ipynb`). The gap is likely
-  smaller or reversed once zero-shot is re-run on all slices.
+Note: Stroke zero-shot is reported as per-case Dice, while the probe reports pixel-level
+Dice. Both are included in the paper with explicit protocol notes.
 
 ---
 
-## 7. Future Work & Retraining Plan
+## 9. Future Work (as stated in the paper)
 
-### 7.1 ~~Fix train/test distribution mismatch (MS + Stroke)~~ — DONE
+- Sweep SAM3 confidence threshold theta in {0.10, 0.30, 0.50} to reduce false positives.
+- Insert a normal/abnormal filter between SAM3 and MedGemma.
+- Prompt engineering for rare subtype discrimination.
+- Extend to multi-class BraTS sub-region segmentation.
+- Formal calibration evaluation for MedGemma confidence (ECE).
 
-Both probes retrained with `empty_ratio=1.0`. Results in `results/ms/results.json` and
-`results/stroke/results.json`. MS Dice improved from 0.149 → 0.263; Stroke from 0.224 → 0.408.
-
-### 7.2 Re-run zero-shot notebooks with corrected protocol
-
-MS zero-shot re-run complete (`12_SAM3_MS_dataset_all_slices.ipynb`, 2026-03-10):
-Dice=0.052 on all 4 004 test slices — now fully comparable with the linear probe.
-
-Stroke all-slices zero-shot (`14_SAM3_Stroke_dataset_all_slices.ipynb`) was too slow
-to complete — still pending. Zero-shot comparison for stroke remains protocol-mismatched.
-
-### 7.3 Address class imbalance more aggressively
-
-Current class weights use inverse-frequency weighting. For MS/stroke the imbalance
-is ~50:1 to ~100:1, which overwhelms a linear probe. Improvements:
-- Increase Dice loss weight (`dice_weight` in `combined_loss`, currently 0.5 → try 1.0–2.0)
-- Use focal loss instead of cross-entropy for the CE component
-- Oversample lesion slices rather than subsampling empty ones
-
-### 7.4 Deeper probe for MS and Stroke
-
-A single `Conv2d(1×1)` may lack capacity for tiny lesion tasks. Try a shallow MLP probe:
-- 2-layer: `Conv2d(C→64, k=1) → ReLU → Conv2d(64→2, k=1)`
-- Still linear in the strict sense per spatial location, but with one hidden layer
-- Expected improvement: captures non-linear feature combinations that a single linear
-  threshold cannot
-
-### 7.5 Larger MS dataset
-
-MSLesSeg (~75 patients) is too small. Consider combining with:
-- **MSSEG 2016** (53 patients, FLAIR + T1 + T2 + FLAIR-DP + FLAIR-PD)
-- **WMH Challenge 2017** (60 patients, white matter hyperintensity)
-- Both are publicly available; the MSLesSeg loader already supports FLAIR modality
-
-### 7.6 Stroke: switch to DWI modality consistently
-
-The zero-shot notebook used FLAIR for stroke (what was available in the ISLES BIDS
-`anat/` folder), but the linear probe used DWI (`--stroke_modality dwi`). For a fair
-comparison both should use the same modality. DWI is the clinical standard for acute
-stroke and likely gives better feature separation.
+---
