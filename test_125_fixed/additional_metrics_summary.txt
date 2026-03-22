@@ -1,0 +1,12 @@
+
+Per-case sensitivity
+  mean:   0.7714
+  std:    0.1964
+  95% CI: [0.7367, 0.8062]
+  median: 0.8436
+
+Per-case precision
+  mean:   0.8636
+  std:    0.1433
+  95% CI: [0.8382, 0.8890]
+  median: 0.8984

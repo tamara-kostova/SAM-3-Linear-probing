@@ -1,0 +1,20 @@
+
+Zero-shot per-case precision
+  mean:    0.1315
+  std:     0.1160
+  95% CI:  [0.1110, 0.1520]
+  median:  0.0991
+
+Zero-shot per-case sensitivity
+  mean:    0.3187
+  std:     0.1457
+  95% CI:  [0.2929, 0.3445]
+  median:  0.3059
+
+Zero-shot per-case iou
+  mean:    0.0880
+  std:     0.0536
+  95% CI:  [0.0785, 0.0975]
+  median:  0.0788
+
+Zero-shot pixel-level precision: 0.0974
